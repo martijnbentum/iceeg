@@ -12,10 +12,21 @@ class Pos:
 
 
 	def __str__(self):
-		a = ['pos:\t\t\t'+self.pos]
-		a.append('simple_pos:\t\t\t'+self.simple_pos)
-		a.append('token:\t\t\t'+self.token)
-		a.append('lemma:\t\t\t'+self.lemma))
+		a=['token:\t\t\t'+self.token]
+		a.append('pos:\t\t\t'+self.pos)
+		a.append('simple_pos:\t\t'+self.pos_simple)
+		a.append('content word:\t\t'+str(self.content_word)) 
+		a.append('lemma:\t\t\t'+self.lemma)
+		a.append('prob tag:\t\t'+ self.probability_of_tag)
+		a.append('token number:\t\t'+self.token_number)
+		return '\n'.join(a)
+
+
+	def print_all_info(self):
+		a=['token:\t\t\t'+self.token]
+		a.append('pos:\t\t\t'+self.pos)
+		a.append('simple_pos:\t\t\t'+self.pos_simple)
+		a.append('lemma:\t\t\t'+self.lemma)
 		a.append('morph seg:\t\t'+self.morphological_segmentation)
 		a.append('prob tag:\t\t'+ self.probability_of_tag)
 		a.append('token number:\t\t'+self.token_number)
@@ -23,7 +34,6 @@ class Pos:
 		a.append('base_phrase_chunk:\t'+self.base_phrase_chunk)
 		a.append('dependency_rel_head_word:\t'+self.dependency_rel_head_word)
 		return '\n'.join(a)
-		return ''
 
 	def set_info(self):
 		if type(self.pos_line) == str:
