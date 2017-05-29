@@ -2,7 +2,6 @@ import glob
 import numpy as np
 import pandas as pd
 import re
-# PATH = '/Users/Administrator/storage/EEG_DATA_ifadv_cgn/'
 PATH = '../'
 
 
