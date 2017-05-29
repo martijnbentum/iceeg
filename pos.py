@@ -1,0 +1,46 @@
+class Pos:
+	#creates a pos object from a frog output line
+
+	def __init__(self,pos_line = None,sentence_number = -999):
+		if pos_line == None:
+			print('expected a line from frog output like so (can also be a list):')
+			print('1   want    want    [want]  VG(neven)   0.998782    O   B-CONJP')
+			return 0
+		self.pos_line = pos_line
+		self.set_info()
+		self.sentence_number = sentence_number # if no number provide default to -999
+
+
+	def __str__(self):
+		a = ['pos:\t\t\t'+self.pos]
+		a.append('simple_pos:\t\t\t'+self.simple_pos)
+		a.append('token:\t\t\t'+self.token)
+		a.append('lemma:\t\t\t'+self.lemma))
+		a.append('morph seg:\t\t'+self.morphological_segmentation)
+		a.append('prob tag:\t\t'+ self.probability_of_tag)
+		a.append('token number:\t\t'+self.token_number)
+		a.append('named_entity:\t\t'+self.named_entity)
+		a.append('base_phrase_chunk:\t'+self.base_phrase_chunk)
+		a.append('dependency_rel_head_word:\t'+self.dependency_rel_head_word)
+		return '\n'.join(a)
+		return ''
+
+	def set_info(self):
+		if type(self.pos_line) == str:
+			self.pos_line = self.pos_line.split('\t')
+
+		pl = self.pos_line
+		self.token_number = pl[0]
+		self.token = pl[1]
+		self.lemma = pl[2]
+		self.morphological_segmentation = pl[3]
+		self.pos = pl[4]
+		self.pos_simple = self.pos.split('(')[0]
+		self.content_word = self.pos_simple in ['N','BW','WW','ADJ']
+		self.probability_of_tag = pl[5]
+		self.named_entity = pl[6]
+		self.base_phrase_chunk = pl[7]
+		self.token_number_of_head_word_in_dp_graph = pl[8]
+		self.dependency_rel_head_word = pl[9]
+
+
