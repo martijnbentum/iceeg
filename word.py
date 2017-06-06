@@ -113,3 +113,17 @@ class Word:
 		for eol in ['.','!','?']:
 			self.word_nocode = self.word_nocode.replace(eol,'')
 			self.word_utf8_nocode = self.word_utf8_nocode.replace(eol,'')
+
+	def make_pos_info(self):
+		if not self.pos_ok:
+			print('no pos or problem with pos',self.fid,self.sid,self.chunk_number)
+			# print(self.__str__())
+			return 0
+		output = []
+		p = self.pos
+		output = [p.token,p.pos,p.lemma,p.probability_of_tag]
+		output.extend([self.st,self.et,self.word,self.word_number+1,self.chunk_number+1])
+		output = map(str,output)
+		return '\t'.join(output)
+
+		output.append(self.st)
