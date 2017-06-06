@@ -138,7 +138,7 @@ class Sid:
 		for s in self.sentences:
 			output.append(s.string_utf8_words())
 		fout = open(filename,'w')
-		fout.write('.\n'.join(output))
+		fout.write(' .\n'.join(output))
 		fout.close()
 		
 
