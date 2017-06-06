@@ -83,3 +83,12 @@ class Ort:
 		for s in self.speakers:
 			s.print_utf8_sentences()
 
+	def create_pos_files(self):
+		output = []
+		for speaker in self.speakers:
+			for s in speaker.sentences:
+				output.append('< file id: '+speaker.fid+' speaker id: '+speaker.sid+ ' sentence: '+str(s.sentence_number+1)+ ' start time: '+str(s.st) + ' end time:' + str(s.et) + ' >')
+				for w in s.words:
+					output.append(w.make_pos_info())	
+		return output
+
