@@ -7,7 +7,8 @@ class Sentence:
 		self.sentence_number = sentence_number
 		self.st = self.words[0].st
 		self.et = self.words[-1].et
-		self.duration = self.et - self.st
+		try: self.duration = round(self.et - self.st,3)
+		except: self.duration = -0.999
 		self.find_chunk_numbers()
 		self.check_sentence()
 		self.npos_ok = False
@@ -15,7 +16,7 @@ class Sentence:
 
 	def __str__(self):
 		a = ['sentence:\t'+self.string_words()]
-		a.append('nwords:\t'+str(self.nwords))
+		a.append('nwords:\t\t'+str(self.nwords))
 		a.append('start_time:\t'+str(self.st))
 		a.append('end_time:\t'+str(self.et))
 		a.append('duration:\t'+str(self.duration))
