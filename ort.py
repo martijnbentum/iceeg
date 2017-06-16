@@ -7,7 +7,7 @@ import sid
 
 
 class Ort:
-	def __init__(self,fid = None,sid_name = 'spreker1', path = '../IFADV_ANNOTATION/ORT/',awd_path = '../IFADV_ANNOTATION/AWD/WORD_TABLES/'):
+	def __init__(self,fid = None,sid_name = 'spreker1', path = '../IFADV_ANNOTATION/ORT/',awd_path = '../IFADV_ANNOTATION/AWD/WORD_TABLES/',corpus = 'IFADV', pos_path = 'POS_IFADV/FROG_OUTPUT/',register = 'spontaneous_dialogue'):
 		if fid == None:
 			fid = 'DVA13U'
 			print('calling ort class with default file id: ',fid)
@@ -15,6 +15,9 @@ class Ort:
 		self.fid = fid
 		self.path = path
 		self.awd_path = awd_path
+		self.corpus = corpus
+		self.pos_path = pos_path
+		self.register = register
 		self.sids = []
 		self.speakers_present = False
 		self.nspeakers = 0
@@ -34,7 +37,7 @@ class Ort:
 		
 
 	def add_speaker(self,sid_name):
-		self.speakers.append( sid.Sid(self.fid,sid_name,self.path) )
+		self.speakers.append( sid.Sid(self.fid,sid_name,self.path,self.awd_path,self.corpus,self.pos_path,self.register) )
 		self.sids.append(sid_name)
 		self.speakers_present = True
 		self.nspeakers += 1

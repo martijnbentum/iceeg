@@ -7,14 +7,14 @@ import match_words
 import word
 
 class Chunk:
-	def __init__(self,line,chunk_number,filename = None, fid = None,sid = None,cid = None):
+	def __init__(self,line,chunk_number,filename = None, fid = None,sid = None,cid = None,corpus = None,register =None):
 		self.line = line
 		self.chunk_number = chunk_number
-		self.add_info(filename,fid,sid,cid)
+		self.add_info(filename,fid,sid,cid,corpus,register)
 		self.check_line()
 		self.st, self.tier, self.label, self.et = self.line
 		self.fix_label()
-		self.duration = self.et - self.st
+		self.duration = round(self.et - self.st,3)
 		self.chunk_id = 'default_id'
 		self.add_words()
 		self.check_overlap()
@@ -35,6 +35,8 @@ class Chunk:
 		a.append( 'speaker id:\t'+self.sid) 
 		a.append( 'overlap:\t'+str(self.overlap)) 
 		a.append( 'overlap unk:\t'+str(self.overlap_unknown)) 
+		a.append(' corpus:\t'+str(self.corpus))
+		a.append('register:\t'+str(self.register))
 		return '\n'.join(a)
 
 	def check_line(self):
@@ -69,7 +71,7 @@ class Chunk:
 			self.label = self.label[1:]
 
 
-	def add_info(self,filename = None, fid = None,sid = None,cid = None):
+	def add_info(self,filename = None, fid = None,sid = None,cid = None,corpus = None,register = None):
 		if filename: self.filename = filename
 		else: self.filename = None
 		if fid: self.fid = fid
@@ -78,13 +80,17 @@ class Chunk:
 		else: self.sid = None
 		if cid: self.cid = cid
 		else: self.cid = None
+		if corpus: self.corpus = corpus
+		else: self.corpus = None
+		if register: self.register = register
+		else: self.register = None
 
 	def add_words(self):
 		words = self.label.split(' ')
 		self.words = []
 		for i,w in enumerate(words):
 			if w:
-				w = word.Word(w,i,self.chunk_number,self.st,self.et,self.filename,self.fid,self.sid,self.cid)
+				w = word.Word(w,i,self.chunk_number,self.st,self.et,self.filename,self.fid,self.sid,self.cid,corpus = self.corpus,register = self.register)
 				self.words.append(w)
 
 	def check_overlap(self):
@@ -103,9 +109,15 @@ class Chunk:
 			self.awd_phon= None
 			self.n_awd_words,self.n_awd_phon_words,self.n_awd_phon = 0, 0, 0
 			return 0
-		self.awd_words = [line for line in awd_items if 'ort-word' in line[1]]
-		self.awd_phon_words = [line for line in awd_items if 'phon-word' in line[1]]
-		self.awd_phon= [line for line in awd_items if 'phon-phon' in line[1]]
+		if self.corpus == 'IFADV':
+			self.awd_words = [line for line in awd_items if 'ort-word' in line[1]]
+			self.awd_phon_words = [line for line in awd_items if 'phon-word' in line[1]]
+			self.awd_phon= [line for line in awd_items if 'phon-phon' in line[1]]
+		if self.corpus == 'CGN':
+			self.awd_words = [line for line in awd_items if '_SEG' not in line[1] and '_FON' not in line[1]]
+			self.awd_phon_words = [line for line in awd_items if '_FON' in line[1]]
+			self.awd_phon= [line for line in awd_items if '_SEG' in line[1]]
+	
 		w,pw,p = len(self.awd_words), len(self.awd_phon_words), len(self.awd_phon)
 		self.n_awd_words,self.n_awd_phon_words,self.n_awd_phon = w, pw, p
 

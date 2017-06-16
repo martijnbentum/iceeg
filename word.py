@@ -6,7 +6,7 @@ import glob
 import string
 
 class Word:
-	def __init__(self, word,word_number, chunk_number, chunk_st,chunk_et,filename = None, fid = None,sid = None,cid = None,wid = None, st = None, et = None):
+	def __init__(self, word,word_number, chunk_number, chunk_st,chunk_et,filename = None, fid = None,sid = None,cid = None,wid = None, st = None, et = None,corpus = None,register = None):
 		self.word = word
 		self.word_number = word_number
 		self.chunk_number= chunk_number
@@ -19,9 +19,9 @@ class Word:
 		self.cid = cid
 		self.st = st
 		self.et = et
-		if st and et: self.duration = et - st
+		if st and et: self.duration = round(et - st,3)
 		else: self.duration = None
-		self.add_info(filename,fid,sid,cid,wid)
+		self.add_info(filename,fid,sid,cid,wid,corpus = corpus,register = register)
 		self.add_times()
 		self.prev_word = None
 		self.next_word = None 
@@ -29,6 +29,7 @@ class Word:
 		self.replace_diacritics()
 		self.remove_special_code()
 		self.pos_ok = False
+		if self.corpus == 'CGN': self.set_overlap(False)
 
 	def __str__(self):
 		a = ['word:\t\t'+self.word]
@@ -46,6 +47,8 @@ class Word:
 		a.append( 'speaker id:\t'+self.sid) 
 		a.append( 'overlap:\t'+str(self.overlap)) 
 		a.append( 'overlap unk:\t'+str(self.overlap_unknown)) 
+		a.append('corpus:\t\t'+str(self.corpus))
+		a.append('register:\t'+str(self.register))
 		if self.pos_ok:
 			a.append('-'*30)
 			a.append('POS tag INFO')
@@ -64,7 +67,7 @@ class Word:
 			if eol in self.word:
 				self.eol = True
 
-	def add_info(self,filename = None, fid = None,sid = None,cid = None,wid = None,st = None, et = None):
+	def add_info(self,filename = None, fid = None,sid = None,cid = None,wid = None,st = None, et = None,corpus = None,register = None):
 		if filename: self.filename = filename
 		if fid: self.fid = fid
 		if sid: self.sid = sid
@@ -72,6 +75,8 @@ class Word:
 		if wid: self.wid = wid
 		if st: self.st = st
 		if et: self.et = et
+		if corpus: self.corpus = corpus
+		if register: self.register = register
 
 	def add_prev_word(self,word = None):
 		self.prev_word = word
@@ -91,7 +96,7 @@ class Word:
 		if st: self.st = st
 		if et: self.et = et
 		if self.st and self.et:
-			self.duration = self.et - self.st
+			self.duration = round(self.et - self.st,3)
 
 	
 	def replace_diacritics(self):
