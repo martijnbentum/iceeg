@@ -8,7 +8,7 @@ import sentence
 import match_words
 
 class Sid:
-	def __init__(self,fid = None,sid = 'spreker1',path = '../IFADV_ANNOTATION/ORT/',awd_path= '../IFADV_ANNOTATION/AWD/WORD_TABLES/'):
+	def __init__(self,fid = None,sid = 'spreker1',path = '../IFADV_ANNOTATION/ORT/',awd_path= '../IFADV_ANNOTATION/AWD/WORD_TABLES/',corpus = 'IFADV',pos_path = 'POS_IFADV/FROG_OUTPUT/',register = 'spontaneous_dialogue'):
 		if fid == None:
 			fid = 'DVA13U'
 			print('calling sid with default file id: ',fid)
@@ -17,13 +17,21 @@ class Sid:
 		self.sid = sid
 		self.path = path
 		self.awd_path = awd_path
+		self.corpus = corpus
+		self.pos_path = pos_path
+		self.register = register
 		self.awd_fn = glob.glob(awd_path + fid + '*' + 'Table')
-		self.ort_fn = glob.glob(path + fid + '*' + sid)
+		if self.corpus == 'IFADV': self.ort_fn = glob.glob(path + fid + '*' + sid)
+		elif self.corpus == 'CGN': self.ort_fn = glob.glob(path + fid + '*' + 'Table')
+		else:self.ort_fn = []
 		self.find_ort_filename()
 		self.find_awd_filename()
 		self.read_ort()
 		self.read_awd()
 		self.add_chunks()
+		self.nsentences = 0
+		self.pos_text_ok = False
+		self.npos_sentences_ok = False
 		self.make_sentences()
 		self.chunk_overlap_indices = []
 		self.word_overlap_indices = []
@@ -32,28 +40,42 @@ class Sid:
 		self.read_frog_pos_output()
 		self.split_pos_text()
 		self.add_pos_to_sentences() 
+		self.ncontent_words = 0
+		self.count_content_words()
 
 	def __str__(self):
 		a = ['file id:\t' + self.fid ]
+		a.append('corpus:\t\t'+str(self.corpus))
+		a.append('register:\t'+str(self.register))
 		a.append('speaker id:\t'+self.sid)
 		a.append('filename:\t'+self.ort_filename)
 		a.append('awd filename:\t'+self.awd_filename)
+		a.append('pos filename:\t'+self.pos_path)
 		a.append('Number of chunks:\t'+ str(self.nchunks))
 		a.append('Number of words:\t'+ str(self.nwords))
 		a.append('N sentences:\t\t' + str(self.nsentences))
 		a.append('N overlap chunks:\t'+ str(self.n_chunk_overlap))
 		a.append('N overlap words:\t'+ str(self.n_word_overlap))
-		a.append('pos text ok:\t'+ str(self.pos_text_ok))
+		a.append('pos text ok:\t\t'+ str(self.pos_text_ok))
 		a.append('npos sentence ok:\t'+ str(self.npos_sentences_ok))
+		a.append('ncontent_words\t\t'+ str(self.ncontent_words))
 		return '\n'.join(a)
+
+	def set_sid(self,sid = 'spreker1'):
+		print('setting speaker id, sid was:',self.sid)
+		self.sid = sid
+		print('sid now is:',self.sid)
 	
 
 	def find_ort_filename(self):
 		for line in self.ort_fn:
-			if self.fid in line and self.sid in line:
-				self.ort_filename = line
-				return line
-		print('ort filename not found for: ',self.fid, self.sid)
+			if self.fid in line:
+				if (self.corpus == 'IFADV' and self.sid in line) or self.corpus == 'CGN':
+					self.ort_filename = line
+					return line
+		print('ort filename not found for: ',self.fid, self.sid,self.path)
+		print('fn found',self.ort_fn)
+		print('corpus specified:',self.corpus)
 		return None
 
 	def find_awd_filename(self):
@@ -88,10 +110,10 @@ class Sid:
 		for i,line in enumerate(self.awd_text[self.last_awd_index:]):
 			ok = False
 			if line[0] >= c.st and line[-1] <= c.et: ok = True
-			if line[0] < c.st and line[-1] > c.st: ok = True
-			if line[0] < c.et and line[-1] > c.et: ok = True
+			if line[0] < c.st and line[-1] > c.st and line[-1] - c.st > 0.04: ok = True
+			if line[0] < c.et and line[-1] > c.et and c.et - line[0] > 0.04: ok = True
 			if ok:
-				if line[2] not in ['sil','sp']:
+				if line[2] not in ['sil','sp','_']:
 					awd_items_in_chunk.append(line) 
 				last = i
 		self.last_awd_index = last
@@ -107,7 +129,7 @@ class Sid:
 		self.words = []
 		self.last_awd_index= 0 
 		for i,line in enumerate(ort_text):
-			c = chunk.Chunk(line,i,self.ort_filename,self.fid,self.sid)
+			c = chunk.Chunk(line,i,self.ort_filename,self.fid,self.sid,corpus =self.corpus,register = self.register)
 			awd_items_in_chunk = self.find_awd_items_in_chunk(c)
 			c.add_awd_items_in_chunk(awd_items_in_chunk)
 			c.match_awd2word()
@@ -138,15 +160,15 @@ class Sid:
 		for s in self.sentences:
 			output.append(s.string_utf8_words())
 		fout = open(filename,'w')
-		fout.write(' .\n'.join(output))
+		fout.write('\n'.join(output))
 		fout.close()
 		
 
 	def read_frog_pos_output(self):
-		fn = glob.glob('POS_IFADV/*'+self.fid+'_'+self.sid+'*')
+		fn = glob.glob(self.pos_path +'*'+self.fid+'_'+self.sid+'*')
 		if len(fn) != 1:
 			print('did not find 1 filename, maybe no FROG POS output present')
-			print('found the following using',self.fid,self.sid,':')
+			print('found the following using',self.fid,self.sid,self.pos_path,':')
 			print('file(s) found:',fn)
 			self.pos_text_ok = False
 			return 0
@@ -186,4 +208,9 @@ class Sid:
 			pos_tags = self.pos_sentences[i]
 			s.add_pos_to_words(pos_tags)
 					
-
+	
+	def count_content_words(self):
+		self.ncontent_words = 0
+		for w in self.words:
+			if w.pos_ok and w.pos.content_word:
+				self.ncontent_words += 1
