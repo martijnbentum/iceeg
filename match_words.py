@@ -1,6 +1,8 @@
 import difflib
 
 class Matcher:
+	#compares ort and awd words and check whether they are the same and aligns the matching words
+	#it uses difflib.SequenceMatcher class to match word lists of ort and awd, and analysis the resulting object
 	def __init__(self,ort,awd):
 		# uses difflib to match ort and awd words. ort can be str or list, awd must be list
 		self.set_values(ort,awd) # set a str and wl version for both ort & awd
@@ -37,6 +39,7 @@ class Matcher:
 		return a
 
 	def set_values(self,ort,awd):
+		#create a word list and string version of ort and awd and remove any extra characters
 		# sets ort and awd to a string and list variables
 		removables = ['\\','.',',','?']
 		if type(ort) == list:
