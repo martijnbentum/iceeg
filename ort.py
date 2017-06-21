@@ -7,6 +7,10 @@ import sid
 
 
 class Ort:
+	# creates a datastructure that hold start and end times and POS tag for each word in a audio file
+	# words are grouped in chunks and sentences, words have a pos object
+	# ort holds sid (speakers object) in speakers, sid holds chunks and sentences and they both hold words
+	# sentences are needed for pos tags and surprisal, surprisal needs to be added still, as does frequency
 	def __init__(self,fid = None,sid_name = 'spreker1', path = '../IFADV_ANNOTATION/ORT/',awd_path = '../IFADV_ANNOTATION/AWD/WORD_TABLES/',corpus = 'IFADV', pos_path = 'POS_IFADV/FROG_OUTPUT/',register = 'spontaneous_dialogue'):
 		if fid == None:
 			fid = 'DVA13U'
@@ -28,6 +32,7 @@ class Ort:
 
 
 	def __str__(self):
+		#prints info from all speakers
 		a = ['file id:\t' + self.fid ]
 		a.append('speaker ids:\t'+'  '.join(self.sids))
 		for speaker in self.speakers:
@@ -37,6 +42,7 @@ class Ort:
 		
 
 	def add_speaker(self,sid_name):
+		#adds a seconds speaker to the file, only needed for ifadv
 		self.speakers.append( sid.Sid(self.fid,sid_name,self.path,self.awd_path,self.corpus,self.pos_path,self.register) )
 		self.sids.append(sid_name)
 		self.speakers_present = True
@@ -44,6 +50,7 @@ class Ort:
 
 
 	def check_overlap(self):
+		# check whether words overlap with other words only needed for ifadv
 		if len(self.speakers) != 2:
 			print('need 2 speaker to check for overlap (> 2 speakers not implemented')
 			return 0
@@ -78,15 +85,18 @@ class Ort:
 
 
 	def make_sentences(self):
+		#makes sentences for each speaker (words between eol markers ... . ! ?)
 		for s in self.speakers:
 			s.make_sentences()
 
 
 	def print_sentences(self):
+		#prints out all sentences for each speaker into a text file, needed to to FROG pos tagging
 		for s in self.speakers:
 			s.print_utf8_sentences()
 
 	def create_pos_files(self):
+		# creates ifadv pos files similar to the ones on the site, not relevant for EEG process 
 		output = []
 		for speaker in self.speakers:
 			for s in speaker.sentences:

@@ -8,6 +8,9 @@ import sentence
 import match_words
 
 class Sid:
+	# speaker object holds info of a speaker in the audio file
+	# contains a chunk object (annotation structure) and sentence object (for POS tagging and surprisal calc)
+	# both sentence and chunk contain words, words hold timing info and POS object, surprisal needs to be added
 	def __init__(self,fid = None,sid = 'spreker1',path = '../IFADV_ANNOTATION/ORT/',awd_path= '../IFADV_ANNOTATION/AWD/WORD_TABLES/',corpus = 'IFADV',pos_path = 'POS_IFADV/FROG_OUTPUT/',register = 'spontaneous_dialogue'):
 		if fid == None:
 			fid = 'DVA13U'
@@ -62,12 +65,16 @@ class Sid:
 		return '\n'.join(a)
 
 	def set_sid(self,sid = 'spreker1'):
+		# set speaker id
 		print('setting speaker id, sid was:',self.sid)
 		self.sid = sid
 		print('sid now is:',self.sid)
 	
 
 	def find_ort_filename(self):
+		# find file name of ortographic transcription based on fid (file id) and sid (speaker id)
+		# sid is only needed for IFADV, because speakers needed to be seperated
+		# ort files have been rewritten to table files with praat (orginally textgrids)
 		for line in self.ort_fn:
 			if self.fid in line:
 				if (self.corpus == 'IFADV' and self.sid in line) or self.corpus == 'CGN':
@@ -79,6 +86,7 @@ class Sid:
 		return None
 
 	def find_awd_filename(self):
+		# find filename of ASR forced aligned start end time of words and phonemes
 		for line in self.awd_fn:
 			if self.fid in line: 
 				self.awd_filename = line
@@ -92,12 +100,14 @@ class Sid:
 		return self.ort_text
 
 	def read_awd(self):
+		#read in ASR info (start end times of words and phonems)
 		self.awd_text = [line.split('\t') for line in codecs.open(self.awd_filename,'r','utf8').read().split('\n') if line and self.sid in line.split('\t')[1] ]
 		for line in self.awd_text:
 			line[0],line[-1] = float(line[0]),float(line[-1])
 		return self.awd_text
 
 	def remove_header(self,ort_text):
+		#remove header of table file if it is present
 		h = ort_text[0]
 		if h[0] =='tmin':
 			return ort_text[1:] 
@@ -105,6 +115,9 @@ class Sid:
 			return ort_text
 
 	def find_awd_items_in_chunk(self,c):
+		# find those awd items that overlap at least 0.04 seconds with the chunk (was only needed for CGN files)
+		# overlap time was chosen based on trial and error, index of last item is stored to speed up search
+		# this works because the table file is in chronological order
 		awd_items_in_chunk = []
 		last = self.last_awd_index
 		for i,line in enumerate(self.awd_text[self.last_awd_index:]):
@@ -140,6 +153,8 @@ class Sid:
 
 
 	def make_sentences(self):
+		# a sentence is all words from 1 speaker between eols, words have an eol field that indicates whether
+		# an eol is present
 		print('creating sentences, words between eols')
 		self.sentences = []
 		sentence_wl = []
@@ -154,6 +169,7 @@ class Sid:
 
 
 	def print_utf8_sentences(self,filename = 'sentences_utf8'):
+		# creates a file with all sentences of this speaker
 		filename = filename + '_' + self.fid + '_' + self.sid + '.txt'
 		print('saving all sentences to:',filename)
 		output = []
@@ -165,6 +181,8 @@ class Sid:
 		
 
 	def read_frog_pos_output(self):
+		# reads in a file based on the FROG POS output, which was based on the sentences created
+		# with print_utf8_sentences
 		fn = glob.glob(self.pos_path +'*'+self.fid+'_'+self.sid+'*')
 		if len(fn) != 1:
 			print('did not find 1 filename, maybe no FROG POS output present')
@@ -179,6 +197,8 @@ class Sid:
 
 
 	def split_pos_text(self):
+		# splits the frog output into a list sentences, each item containing 1 sentences and the sentence
+		# is a list of items containing words with pos info
 		if self.pos_text_ok == False:
 			print('pos tags not read in')
 			self.npos_sentences_ok = False
@@ -197,6 +217,7 @@ class Sid:
 				
 				
 	def add_pos_to_sentences(self):
+		# assings pos object (with pos info) to each word in the sentence
 		print('adding pos tags to words in sentences')
 		if self.pos_text_ok == False:
 			print('pos tags not read in')
@@ -210,6 +231,7 @@ class Sid:
 					
 	
 	def count_content_words(self):
+		# counts the number of words that are content words
 		self.ncontent_words = 0
 		for w in self.words:
 			if w.pos_ok and w.pos.content_word:

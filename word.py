@@ -6,6 +6,10 @@ import glob
 import string
 
 class Word:
+	# basic unit, contains info about word, POS, start and end info, corpus and register, 
+	# whether it is the last word of a sentence, whether it has special marking (*)
+	# should add an exclude category: special marker, word stop list, etc?
+	# surprisal and frequency should be added
 	def __init__(self, word,word_number, chunk_number, chunk_st,chunk_et,filename = None, fid = None,sid = None,cid = None,wid = None, st = None, et = None,corpus = None,register = None):
 		self.word = word
 		self.word_number = word_number
@@ -57,6 +61,7 @@ class Word:
 		
 
 	def status(self):
+		# word info, whether it has a special code, punctuation, or is the last word in a sentence
 		self.special_code,self.punctuation,self.eol = False,False,False
 		if '*' in self.word:
 			self.special_code = True
@@ -68,6 +73,7 @@ class Word:
 				self.eol = True
 
 	def add_info(self,filename = None, fid = None,sid = None,cid = None,wid = None,st = None, et = None,corpus = None,register = None):
+		# adds info to the word, file speaker chunk and word id/index, start and end time, corpus and register
 		if filename: self.filename = filename
 		if fid: self.fid = fid
 		if sid: self.sid = sid
@@ -79,12 +85,15 @@ class Word:
 		if register: self.register = register
 
 	def add_prev_word(self,word = None):
+		# unused, add last word
 		self.prev_word = word
 
 	def add_next_word(self,word = None):
+		# unused, add next word
 		self.next_word = word
 
 	def set_overlap(self,overlap = None):
+		# marks whether word overlaps in time with other words, and marks whether this has been checked
 		if overlap == None:
 			self.overlap_unknown = True
 			self.overlap = False
@@ -93,6 +102,7 @@ class Word:
 			self.overlap_unknown = False
 
 	def add_times(self,st = None, et= None):
+		# adds start and end time
 		if st: self.st = st
 		if et: self.et = et
 		if self.st and self.et:
@@ -100,6 +110,7 @@ class Word:
 
 	
 	def replace_diacritics(self):
+		# IFADV had special codes for charachter with diacritics, this function replaces that for the utf8 equivalent
 		rd = {'\e^':'ê','\e"':'ë',"\e'":'é',"\e`":'è','\i"':'ï',"\i'":'í','\\u"':'ü',"\\u'":'ú',"\\a'":'á',"\\a`":'à','\o"':'ö',"\o'":'ó','\c,':'ç'}
 		temp = self.word
 		for c in rd.keys():
@@ -108,6 +119,7 @@ class Word:
 
 
 	def remove_special_code(self):
+		#removes * and eol characters
 		if self.special_code:
 			self.word_nocode = self.word.split('*')[0]
 			self.word_utf8_nocode = self.word_utf8.split('*')[0]
@@ -120,6 +132,7 @@ class Word:
 			self.word_utf8_nocode = self.word_utf8_nocode.replace(eol,'')
 
 	def make_pos_info(self):
+		# adds pos object info to the word __str__ function
 		if not self.pos_ok:
 			print('no pos or problem with pos',self.fid,self.sid,self.chunk_number)
 			# print(self.__str__())

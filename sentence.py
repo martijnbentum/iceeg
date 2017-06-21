@@ -1,6 +1,9 @@
 import pos
 
 class Sentence:
+	# a structure containing all words by one speaker between eol charachters ... . ! ?
+	# a sentence contains word object and these have a property that indicate whether they are the last word
+	# of a sentence
 	def __init__(self,words,sentence_number = 0):
 		self.words = words
 		self.nwords = len(words)
@@ -28,6 +31,7 @@ class Sentence:
 
 
 	def print_words(self):
+		# prints the info of each word
 		print(self)
 		print('-'*50)
 		for w in self.words:
@@ -36,6 +40,7 @@ class Sentence:
 
 
 	def string_words(self):
+		# creates a ascii sentence out of all words in the sentence
 		output = [] 
 		for w in self.words:
 			output.append( w.word )
@@ -43,6 +48,7 @@ class Sentence:
 
 
 	def string_utf8_words(self):
+		# creates a utf8 sentence out of all words in the sentence
 		output = []
 		for w in self.words:
 			output.append( w.word_utf8_nocode )
@@ -50,6 +56,8 @@ class Sentence:
 
 
 	def find_chunk_numbers(self):
+		# creates a list of all chunk number of the words in the sentence
+		# this does not mean all words of that chunk are in this sentence
 		self.chunk_numbers = []
 		for w in self.words:
 			if w.chunk_number not in self.chunk_numbers:
@@ -58,6 +66,7 @@ class Sentence:
 		
 
 	def check_sentence(self):
+		# sanity check, last word should be and eol word
 		self.ok = True
 		for i,w in enumerate(self.words):
 			if w.eol == True and i != (len(self.words) - 1):
@@ -65,6 +74,8 @@ class Sentence:
 		
 
 	def add_pos_to_words(self,pos_tags):
+		# uses the FROG POS output to add POS tag info to each word
+		# assumes that the output has the identical sentence structure as the object (number of words and order)
 		if self.nwords == len(pos_tags):
 			self.npos_ok = True
 			for wi,pos_tag in enumerate(pos_tags):
