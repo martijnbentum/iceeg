@@ -11,12 +11,12 @@ o =[]
 ifadv = []
 
 for line in fnk:
-    k.append(ort.Ort(fid = line[1],sid_name=line[0],path ='../../CGN/TABLE_CGN2_ORT/',awd_path = '../../CGN/TABLE_CGN2_AWD/',corpus='CGN',pos_path = 'POS_K/FROG_OUTPUT/',register = 'news_broadcast'))
+    k.append(ort.Ort(fid = line[1],sid_name=line[0],path ='../TABLE_CGN2_ORT/',awd_path = '../../CGN/TABLE_CGN2_AWD/',corpus='CGN',pos_path = 'POS_K/FROG_OUTPUT/',register = 'news_broadcast'))
     k_ncontent_words += k[-1].speakers[0].ncontent_words
     print(k[-1])
 
 for line in fno:
-    o.append(ort.Ort(fid = line[1],sid_name=line[0],path ='../../CGN/TABLE_CGN2_ORT/',awd_path = '../../CGN/TABLE_CGN2_AWD/',corpus='CGN',pos_path = 'POS_O/FROG_OUTPUT/',register = 'read_aloud_stories'))
+    o.append(ort.Ort(fid = line[1],sid_name=line[0],path ='..//TABLE_CGN2_ORT/',awd_path = '../../CGN/TABLE_CGN2_AWD/',corpus='CGN',pos_path = 'POS_O/FROG_OUTPUT/',register = 'read_aloud_stories'))
     o_ncontent_words += o[-1].speakers[0].ncontent_words
     print(o[-1])
 
