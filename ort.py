@@ -7,25 +7,31 @@ import sid
 
 
 class Ort:
-	# creates a datastructure that hold start and end times and POS tag for each word in a audio file
+	# creates a datastructure that hold start and end times and POS tag 
+	# for each word in a audio file
 	# words are grouped in chunks and sentences, words have a pos object
-	# ort holds sid (speakers object) in speakers, sid holds chunks and sentences and they both hold words
-	# sentences are needed for pos tags and surprisal, surprisal needs to be added still, as does frequency
-	def __init__(self,fid = None,sid_name = 'spreker1', path = '../IFADV_ANNOTATION/ORT/',awd_path = '../IFADV_ANNOTATION/AWD/WORD_TABLES/',corpus = 'IFADV', pos_path = 'POS_IFADV/FROG_OUTPUT/',register = 'spontaneous_dialogue'):
+	# ort holds sid (speakers object) in speakers, sid holds chunks and 
+	# sentences and they both hold words
+	# sentences are needed for pos tags and surprisal, surprisal needs to be added still, 
+	# as does frequency
+	def __init__(self,fid = None,sid_name = 'spreker1', path = None,awd_path = None,corpus = 'IFADV', pos_path = None,register = 'spontaneous_dialogue',auto_set_paths = True):
 		if fid == None:
 			fid = 'DVA13U'
 			print('calling ort class with default file id: ',fid)
 		print('creating ort with file id:',fid,' and speaker id:',sid_name)
 		self.fid = fid
+		self.auto_set_paths = True
+		self.corpus = corpus
 		self.path = path
 		self.awd_path = awd_path
-		self.corpus = corpus
 		self.pos_path = pos_path
 		self.register = register
+		self.set_paths()
 		self.sids = []
 		self.speakers_present = False
 		self.nspeakers = 0
 		self.speakers = [] 
+		self.words = []
 
 		if sid:
 			self.add_speaker(sid_name)
@@ -39,6 +45,27 @@ class Ort:
 			a.append('-'* 50)
 			a.append(speaker.__str__())
 		return '\n'.join(a)
+
+	def set_paths(self):
+		if not self.auto_set_paths: 
+			print('not setting paths')
+		elif self.corpus == 'IFADV':
+			print('setting paths for IFADV')
+			self.path = '../IFADV_ANNOTATION/ORT/'
+			self.awd_path = '../IFADV_ANNOTATION/AWD/WORD_TABLES/'
+			self.pos_path = 'POS_IFADV/FROG_OUTPUT/'
+		elif self.corpus == 'CGN': 
+			print('setting paths for CGN')
+			self.path = '../TABLE_CGN2_ORT/' 
+			self.awd_path = '../TABLE_CGN2_AWD/'
+			if self.register == 'read_aloud_stories':self.pos_path='POS_O/FROG_OUTPUT/'
+			elif self.register == 'news_broadcast':self.pos_path='POS_K/FROG_OUTPUT/'
+			else:
+				print('unknown register:',self.register)
+				self.pos_path = 'POS_O/FROG_OUTPUT/'
+				print('setting pos_path to comp-o:',self.pos_path)
+		else:
+			print('unknown corpus',self.corpus,'please set paths yourself')
 		
 
 	def add_speaker(self,sid_name):
@@ -47,6 +74,7 @@ class Ort:
 		self.sids.append(sid_name)
 		self.speakers_present = True
 		self.nspeakers += 1
+		self.words.extend(self.speakers[-1].words)
 
 
 	def check_overlap(self):
