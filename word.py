@@ -11,6 +11,7 @@ class Word:
 	# should add an exclude category: special marker, word stop list, etc?
 	# surprisal and frequency should be added
 	def __init__(self, word,word_number, chunk_number, chunk_st,chunk_et,filename = None, fid = None,sid = None,cid = None,wid = None, st = None, et = None,corpus = None,register = None):
+		self.usable = True
 		self.word = word
 		self.word_number = word_number
 		self.chunk_number= chunk_number
@@ -53,10 +54,13 @@ class Word:
 		a.append( 'overlap unk:\t'+str(self.overlap_unknown)) 
 		a.append('corpus:\t\t'+str(self.corpus))
 		a.append('register:\t'+str(self.register))
+		a.append('usable:\t'+str(self.usable))
 		if self.pos_ok:
 			a.append('-'*30)
 			a.append('POS tag INFO')
 			a.append(self.pos.__str__())
+		a.append('-'*30)
+		a.extend(self.print_sample_info(aslist = True))
 		return '\n'.join(a)
 		
 
@@ -65,6 +69,7 @@ class Word:
 		self.special_code,self.punctuation,self.eol = False,False,False
 		if '*' in self.word:
 			self.special_code = True
+			self.usable = False
 		for p in string.punctuation.replace('*',''):
 			if p in self.word:
 				self.punctuation = True
@@ -143,5 +148,45 @@ class Word:
 		output.extend([self.st,self.et,self.word,self.word_number+1,self.chunk_number+1])
 		output = map(str,output)
 		return '\t'.join(output)
+		# not sure what this is doing here:  output.append(self.st)
 
-		output.append(self.st)
+	def seconds2sample(self,s):
+		if type(s) == float or type(s) == int:
+			return int(round(s*1000))
+		else:
+			print(s,'is not a number, returning as is')
+			return s
+
+	def set_times_as_samples(self,offset = 0,baseline = -300,epoch_dur = 1000):
+		try:
+			self.sample_offset = offset
+			self.st_sample = self.seconds2sample(self.st) + offset
+			self.et_sample = self.seconds2sample(self.et) + offset
+			self.duration_sample = self.seconds2sample(self.duration)
+			self.st_epoch = self.st_sample + baseline
+			self.et_epoch = self.st_sample + epoch_dur
+			self.baseline = baseline
+			self.epoch_dur = epoch_dur
+		except:
+			print(self.__str__())
+			self.usable = False
+
+	def print_sample_info(self,aslist = False):
+		try:
+			a = ['sample offset:\t\t'+str(self.sample_offset)]
+			a.append( 'baseline:\t\t'+str(self.baseline) )
+			a.append( 'epoch duration:\t\t'+str(self.epoch_dur) )
+			a.append( 'start_sample:\t\t'+str(self.st_sample) )
+			a.append( 'end sample:\t\t'+str(self.et_sample) )
+			a.append( 'duration_sample:\t'+str(self.duration_sample) )
+			a.append( 'start epoch:\t\t'+str(self.st_epoch) )
+			a.append( 'end epoch:\t\t'+str(self.et_epoch) )
+			if aslist: return a
+			else: return '\n'.join(a)
+		except:
+			m = 'NA, use set_times_as_samples([offset],[baseline],[epoch_dur])'
+			if aslist: return [m]
+			else: return m
+
+
+
