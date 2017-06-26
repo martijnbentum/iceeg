@@ -1,13 +1,24 @@
+'''vmrk module loads and process BrainVision marker files
+
+vmrk module contains the vmrk class
+'''
+
 import glob
 import numpy as np
 import re
 PATH = '../'
 
 class vmrk:
-	def __init__(self,pp_id = None,exp_type = None,path = None):
+	def __init__(self,pp_id = None,exp_type = None,path = '../'):
+		'''Load and process BrainVision marker files
+
+		Keywords:
+		pp_id = participant number int
+		exp_type = experimental type (o/k/ifadv) reflect register of audio file
+		path = default = parent directory
+		'''
 		print('loading vmrk with:\t',pp_id,exp_type,path)
-		if not path: self.path = PATH
-		else: self.path = path
+		self.path = path
 		self.pp_id = pp_id
 		self.exp_type = exp_type
 		self.path = path
@@ -19,15 +30,14 @@ class vmrk:
 	def __str__(self):
 		m = '\nVMRK OBJECT\n'
 		m += 'vmrk filename:\t\t' + str(self.vmrk_fn) + '\n'
-		# fields = ('pp_id exp_type vmrk events marker_dict duration').split(' ')
-		# m += 'FIELDS:\n' + '\t'.join(fields)
 		return m
 
 
 	def find_vmrk_filename(self):
-		# finds the filename based on pp_id and exp type, sets to none if it fails
-		# will set n eeg recordings according to n matches it finds
-		# sometimes 1 session was recorded in multiple file (because of battery failure)
+		'''find vmrk filename based on pp_id and exp type, sets to none if it fails
+		will set n eeg recordings according to n matches it finds
+		sometimes 1 EEG session was recorded in multiple file (because of battery failure)
+		'''
 		pp_id = str(self.pp_id)
 		fn = glob.glob(self.path + 'EEG/pp*' + pp_id + '_' \
 			+ self.exp_type + '*.vmrk')
@@ -50,7 +60,7 @@ class vmrk:
 
 
 	def read_vmrk(self):
-		# reads in the marker file and deals with multiple recording in 1 session
+		'''read in the marker file and deal with multiple recordings in 1 session'''
 		if not self.pp_id or not self.exp_type:
 			print("need pp_id and exp_type")
 			self.vmrk_fn= None
@@ -73,8 +83,12 @@ class vmrk:
 			
 
 	def make_events(self,vmrk):
-		# creates an np array from vmrk list
-		# called by vmrk2events expects raw vmrk list
+		'''Create an np array from vmrk list that is compatible with MNE
+
+		vmrk is the marker file split on lines and tabs 
+		Return np array of dimension: number_of_markers X 3
+		columns: sample number, 0, marker 
+		'''
 		if not self.pp_id or not self.exp_type or not self.vmrk:
 			self.events = None
 		output = []

@@ -7,8 +7,12 @@ import match_words
 import word
 
 class Chunk:
-	# basic unit of orthographic transcription
+	'''Basic unit of orthographic transcription.
+	Contains a list of words objects with word information.
+	'''
+	
 	def __init__(self,line,chunk_number,filename = None, fid = None,sid = None,cid = None,corpus = None,register =None):
+		'''Basic unit of orthographic transcription.'''
 		self.line = line
 		self.chunk_number = chunk_number
 		self.add_info(filename,fid,sid,cid,corpus,register)
@@ -41,7 +45,10 @@ class Chunk:
 		return '\n'.join(a)
 
 	def check_line(self):
-		# checks whether line is a good table line
+		'''Check whether line is a good table line.
+		Should be a list with 4 items (start,speaker,label,end)
+		First and last column should be castable to float
+		'''
 		if type(self.line) == str:
 			temp = line.split('\t')
 			if len(temp) == 4:
@@ -57,8 +64,9 @@ class Chunk:
 
 
 	def fix_label(self):
-		# checks for interpuction and special code problems and fixes those
-		# a problem is a space between .?* and word or the presence of a , 
+		'''Check for interpuction and special code problems and fixe them.
+		(a problem is a space between .?* and word or the presence of a , )
+		'''
 		self.label_problem = []
 		for problem in [' .',',',' ?',' *','  ']:
 			if problem in self.label: self.label_problem.append(problem)  
@@ -73,7 +81,7 @@ class Chunk:
 
 
 	def add_info(self,filename = None, fid = None,sid = None,cid = None,corpus = None,register = None):
-		# adds file speaker id corpus name and register info to object
+		'''Add file id, speaker id, corpus name and register info to object.'''
 		if filename: self.filename = filename
 		else: self.filename = None
 		if fid: self.fid = fid
@@ -88,7 +96,7 @@ class Chunk:
 		else: self.register = None
 
 	def add_words(self):
-		# creates word object for each word in the chunk
+		'''Create word object for each word in the chunk.'''
 		words = self.label.split(' ')
 		self.words = []
 		for i,w in enumerate(words):
@@ -97,7 +105,7 @@ class Chunk:
 				self.words.append(w)
 
 	def check_overlap(self):
-		# checks whether any word in the chunk overlaps in time with words uttered by the other speaker
+		'''Check whether any word in the chunk overlaps in time with words uttered by the other speaker.'''
 		self.overlap_unknown,self.overlap = False,False
 		self.overlap_indices = []
 		for i,w in enumerate(self.words):
@@ -107,7 +115,7 @@ class Chunk:
 				self.overlap_indices.append(i)
 
 	def add_awd_items_in_chunk(self,awd_items = None):
-		# creates lists with items that occur in the timeslot of the chunk and puts it in seperate lists
+		'''Create lists with items that occur in the timeslot of the chunk and puts it in seperate lists.'''
 		if awd_items == None:
 			self.awd_words = None
 			self.awd_phon_words = None
@@ -127,7 +135,7 @@ class Chunk:
 		self.n_awd_words,self.n_awd_phon_words,self.n_awd_phon = w, pw, p
 
 	def string_awd(self,awd_type = 'words'):
-		# combines all awd words into a list
+		'''Combine all awd words into a list.'''
 		if awd_type == 'words':
 			if self.awd_words:
 				return ' '.join([line[2] for line in self.awd_words])
@@ -140,7 +148,9 @@ class Chunk:
 		
 
 	def match_awd2word(self):
-		#uses a matcher object to match awd and ort words, matcher class is defined in match_words
+		'''Use a matcher object to match awd and ort words.
+		Matcher class is defined in match_words.
+		'''
 		awd_word_list = [line[2] for line in self.awd_words]
 		self.matcher = match_words.Matcher(self.label,awd_word_list)
 		for i,w in enumerate(self.words):

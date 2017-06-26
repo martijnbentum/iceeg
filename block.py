@@ -1,8 +1,26 @@
+'''The module aggregates timing information for one audio file in the experiment.
+
+block module contains the block class
+the module is used by the experiment class
+'''
+
+
 import pandas as pd
 import ort
 
 class block:
+	'''The block class aggregates timing information for one audio file in the experiment.'''
+
 	def __init__(self,pp_id,exp_type,vmrk,log,bid):
+		'''Load general info about start and end time block matches all words 
+		to sample numbers in the vmrk marker file.
+
+		Keyword arguments:
+		pp_id = participant number int
+		exp_type = experiment type ('k' / 'o' / 'ifadv) str
+		vmrk = vmrk object, contains marker information 
+		log = log object, contains start/end times; name audio file
+		'''
 		self.pp_id = pp_id
 		self.exp_type = exp_type
 		self.vmrk = vmrk
@@ -10,6 +28,7 @@ class block:
 		self.bid = bid
 		self.set_info()
 		self.load_orts()
+
 
 	def __str__(self):
 		m = '\nBLOCK OBJECT\n'
@@ -27,7 +46,14 @@ class block:
 		m += 'duration\t\t'+str(self.duration) + '\n'
 		return m
 
+
 	def set_info(self):
+		''''Make block information directly excessable on object and convert time 
+		to sample number.
+		
+		Set information to load ort object which provides time information for
+		each word in the audio file
+		'''
 		self.l = self.log.log
 		self.marker = self.l[self.l['block'] == self.bid]['marker'].values[0]
 		self.wav_filename = self.log.marker2wav[self.marker]
@@ -51,10 +77,19 @@ class block:
 			self.corpus = 'CGN'
 			self.register = 'news_broadcast' 
 
+
 	def load_orts(self):
-		# create the ort file for all fids in the block 
-		# ( a block is 1 experimental wav file which can consist of 
-		# multiple wav from comp-o or comp-k (always 1 for ifadv)
+		'''create the ort object for all fids (file id) in the block  
+
+		A block consists of 1 experimental audio file which can consist of 
+		multiple wav from comp-o or comp-k (always 1 for ifadv)
+		Files from comp-k are concatenated with an offset of 900 ms
+
+		The ort object is created based on corpus transcriptions of CGN and IFADV
+		For each word in the transcription the time is matched to a sample number
+		by calculating the offset of the word from the marker in the vmrk object 
+		which signals the onset of the experimental audio file
+		'''
 		k_wav_offset_second = 0.9
 		k_wav_offset_sample= 900
 		self.orts = []

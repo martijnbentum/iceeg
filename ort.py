@@ -7,14 +7,26 @@ import sid
 
 
 class Ort:
-	# creates a datastructure that hold start and end times and POS tag 
-	# for each word in a audio file
-	# words are grouped in chunks and sentences, words have a pos object
-	# ort holds sid (speakers object) in speakers, sid holds chunks and 
-	# sentences and they both hold words
-	# sentences are needed for pos tags and surprisal, surprisal needs to be added still, 
-	# as does frequency
+	'''Create struture that holds start and end times and POS tag for all words in an audio file.
+
+	Ort uses transcription from CGN and IFADV corpus
+	ort holds sid (speakers object) in speakers, sid holds chunks and 
+	sentences and they both hold words
+	sentences are needed for pos tags and surprisal, surprisal needs to be added still, 
+	as does frequency
+	'''
+
 	def __init__(self,fid = None,sid_name = 'spreker1', path = None,awd_path = None,corpus = 'IFADV', pos_path = None,register = 'spontaneous_dialogue',auto_set_paths = True):
+	'''Load information about words in the audio
+
+	Keywords:
+	fid = file id of audio / transcription file in the corpus
+	sid_name = speaker id in the corpus
+	path/awd_path/pos_poth = location of ort (ortographic) awd (forced aligned) and pos transcription
+	corpus = corpus of file (IFADV/CGN) default = IFADV
+	register = type of speech (spontaneous_dialogue/news_broadcast/read_aloud_stories)
+	auto_set_paths = set paths based on register and corpus
+	'''
 		if fid == None:
 			fid = 'DVA13U'
 			print('calling ort class with default file id: ',fid)
@@ -38,7 +50,6 @@ class Ort:
 
 
 	def __str__(self):
-		#prints info from all speakers
 		a = ['file id:\t' + self.fid ]
 		a.append('speaker ids:\t'+'  '.join(self.sids))
 		for speaker in self.speakers:
@@ -47,6 +58,7 @@ class Ort:
 		return '\n'.join(a)
 
 	def set_paths(self):
+		'''Set location of the different transcription (ort/awd/pos).'''
 		if not self.auto_set_paths: 
 			print('not setting paths')
 		elif self.corpus == 'IFADV':
@@ -69,7 +81,7 @@ class Ort:
 		
 
 	def add_speaker(self,sid_name):
-		#adds a seconds speaker to the file, only needed for ifadv
+		'''add a speaker, multiply speakers only in case of ifadv.'''
 		self.speakers.append( sid.Sid(self.fid,sid_name,self.path,self.awd_path,self.corpus,self.pos_path,self.register) )
 		self.sids.append(sid_name)
 		self.speakers_present = True
@@ -78,7 +90,7 @@ class Ort:
 
 
 	def check_overlap(self):
-		# check whether words overlap with other words only needed for ifadv
+		'''check whether words overlap with other words only needed for ifadv'''
 		if len(self.speakers) != 2:
 			print('need 2 speaker to check for overlap (> 2 speakers not implemented')
 			return 0
@@ -113,18 +125,25 @@ class Ort:
 
 
 	def make_sentences(self):
-		#makes sentences for each speaker (words between eol markers ... . ! ?)
+		'''Makes sentences for each speaker (words between eol markers . ! ?)
+
+		Sentence structure is needed for POS tagging and language modelling.
+		'''
 		for s in self.speakers:
 			s.make_sentences()
 
 
 	def print_sentences(self):
-		#prints out all sentences for each speaker into a text file, needed to to FROG pos tagging
+		'''Print out all sentences for each speaker into a text file 
+		needed to do FROG pos tagging and language modelling
+		'''
 		for s in self.speakers:
 			s.print_utf8_sentences()
 
 	def create_pos_files(self):
-		# creates ifadv pos files similar to the ones on the site, not relevant for EEG process 
+		'''Not relevant for EEG processing 
+		Create ifadv pos files similar to the ones on the site
+		''' 
 		output = []
 		for speaker in self.speakers:
 			for s in speaker.sentences:

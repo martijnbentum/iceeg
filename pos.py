@@ -1,7 +1,10 @@
 class Pos:
-	#creates a pos object from a frog output line
+	'''Create a pos object from a Frog output line (corresponding with 1 word).''' 
 
 	def __init__(self,pos_line = None,sentence_number = -999):
+		'''Create a pos object from a Frog output line (corresponding with 1 word).
+		Frog output line is created with Frog: https://languagemachines.github.io/frog/
+		''' 
 		if pos_line == None:
 			print('expected a line from frog output like so (can also be a list):')
 			print('1   want    want    [want]  VG(neven)   0.998782    O   B-CONJP')
@@ -36,6 +39,7 @@ class Pos:
 		return '\n'.join(a)
 
 	def set_info(self):
+		'''Set POS information based on the output of Frog.'''
 		if type(self.pos_line) == str:
 			self.pos_line = self.pos_line.split('\t')
 

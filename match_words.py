@@ -1,10 +1,17 @@
 import difflib
 
 class Matcher:
-	#compares ort and awd words and check whether they are the same and aligns the matching words
-	#it uses difflib.SequenceMatcher class to match word lists of ort and awd, and analysis the resulting object
+	'''Align ort and awd words and check whether they are identical 
+	(uses difflib.SequenceMatcher class to match word lists of ort and awd)
+	'''
+
 	def __init__(self,ort,awd):
-		# uses difflib to match ort and awd words. ort can be str or list, awd must be list
+		'''Align match words from two lists.
+
+		Keywords:
+		ort = is a sentence or list of words from orthographic transcription file
+		awd = is a list of word from forced aligned transcription file
+		'''
 		self.set_values(ort,awd) # set a str and wl version for both ort & awd
 		# self.fix_ort() # check for mistakes in ort transcription, interpunction
 		self.nort = len(self.wl_ort) 
@@ -39,8 +46,7 @@ class Matcher:
 		return a
 
 	def set_values(self,ort,awd):
-		#create a word list and string version of ort and awd and remove any extra characters
-		# sets ort and awd to a string and list variables
+		'''Create a word list and string version of ort and awd and remove any extra characters.'''
 		removables = ['\\','.',',','?']
 		if type(ort) == list:
 			ort = ' '.join(ort)
@@ -58,7 +64,7 @@ class Matcher:
 		self.wl_awd = awd
  
 	def check_problems(self):
-		# tries to diagnose alignment problems between ort and awd words
+		'''Try to diagnose alignment problems between ort and awd words.'''
 		self.asr_problem = False
 		self.ort_indices_missing_in_awd = []
 		self.awd_indices_missing_in_ort = []
@@ -78,7 +84,7 @@ class Matcher:
 				
 		
 	def make_translation(self):
-		# creates a dict that mapes ort word indices to awd word indices
+		'''Create a dict that mapes ort word indices to awd word indices.'''
 		self.ort_index2awd_index = {} 
 		self.awd_index2ort_index = {} 
 		for block in self.blocks:

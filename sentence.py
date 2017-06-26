@@ -1,10 +1,14 @@
 import pos
 
 class Sentence:
-	# a structure containing all words by one speaker between eol charachters ... . ! ?
-	# a sentence contains word object and these have a property that indicate whether they are the last word
-	# of a sentence
+	'''A structure containing all words by one speaker between eol charachters ... . ! ?
+
+	a sentence contains word objects which also link to the chunk object
+	(chunk object reflect the ortogrpahic annotation structure)
+	'''
+	
 	def __init__(self,words,sentence_number = 0):
+		'''Make sentence object from a list of word object that form a sentence'''
 		self.words = words
 		self.nwords = len(words)
 		self.sentence_number = sentence_number
@@ -31,7 +35,7 @@ class Sentence:
 
 
 	def print_words(self):
-		# prints the info of each word
+		'''Print the info of each word'''
 		print(self)
 		print('-'*50)
 		for w in self.words:
@@ -40,7 +44,7 @@ class Sentence:
 
 
 	def string_words(self):
-		# creates a ascii sentence out of all words in the sentence
+		'''Create an ascii sentence out of all words in the sentence'''
 		output = [] 
 		for w in self.words:
 			output.append( w.word )
@@ -48,7 +52,7 @@ class Sentence:
 
 
 	def string_utf8_words(self):
-		# creates a utf8 sentence out of all words in the sentence
+		'''Create an utf8 sentence out of all words in the sentence'''
 		output = []
 		for w in self.words:
 			output.append( w.word_utf8_nocode )
@@ -56,8 +60,9 @@ class Sentence:
 
 
 	def find_chunk_numbers(self):
-		# creates a list of all chunk number of the words in the sentence
-		# this does not mean all words of that chunk are in this sentence
+		'''Create a list of all chunk numbers of the words in the sentence
+		(this does not mean all words of these chunks are in this sentence)
+		'''
 		self.chunk_numbers = []
 		for w in self.words:
 			if w.chunk_number not in self.chunk_numbers:
@@ -66,7 +71,7 @@ class Sentence:
 		
 
 	def check_sentence(self):
-		# sanity check, last word should be and eol word
+		'''Check whether last word is an eol word (this should be the case)'''
 		self.ok = True
 		for i,w in enumerate(self.words):
 			if w.eol == True and i != (len(self.words) - 1):
@@ -74,8 +79,11 @@ class Sentence:
 		
 
 	def add_pos_to_words(self,pos_tags):
-		# uses the FROG POS output to add POS tag info to each word
-		# assumes that the output has the identical sentence structure as the object (number of words and order)
+		'''Add POS tag info to each word
+
+		Uses the FROG POS output and assumes that the output has the identical 
+		sentence structure as the object (number of words and order)
+		'''
 		if self.nwords == len(pos_tags):
 			self.npos_ok = True
 			for wi,pos_tag in enumerate(pos_tags):
