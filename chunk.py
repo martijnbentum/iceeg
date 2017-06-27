@@ -4,6 +4,7 @@
 import codecs
 import glob
 import match_words
+import utils
 import word
 
 class Chunk:
@@ -25,6 +26,7 @@ class Chunk:
 		self.check_overlap()
 		self.add_awd_items_in_chunk()
 		self.nwords = len(self.words)
+		utils.make_attributes_available(self,'w',self.words)
 
 
 	def __str__(self):
