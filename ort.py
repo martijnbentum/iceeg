@@ -4,6 +4,7 @@
 import codecs
 import glob
 import sid
+import utils
 
 
 class Ort:
@@ -17,16 +18,16 @@ class Ort:
 	'''
 
 	def __init__(self,fid = None,sid_name = 'spreker1', path = None,awd_path = None,corpus = 'IFADV', pos_path = None,register = 'spontaneous_dialogue',auto_set_paths = True):
-	'''Load information about words in the audio
+		'''Load information about words in the audio
 
-	Keywords:
-	fid = file id of audio / transcription file in the corpus
-	sid_name = speaker id in the corpus
-	path/awd_path/pos_poth = location of ort (ortographic) awd (forced aligned) and pos transcription
-	corpus = corpus of file (IFADV/CGN) default = IFADV
-	register = type of speech (spontaneous_dialogue/news_broadcast/read_aloud_stories)
-	auto_set_paths = set paths based on register and corpus
-	'''
+		Keywords:
+		fid = file id of audio / transcription file in the corpus
+		sid_name = speaker id in the corpus
+		path/awd_path/pos_poth = location of ort (ortographic) awd (forced aligned) and pos transcription
+		corpus = corpus of file (IFADV/CGN) default = IFADV
+		register = type of speech (spontaneous_dialogue/news_broadcast/read_aloud_stories)
+		auto_set_paths = set paths based on register and corpus
+		'''
 		if fid == None:
 			fid = 'DVA13U'
 			print('calling ort class with default file id: ',fid)
@@ -48,6 +49,7 @@ class Ort:
 		if sid:
 			self.add_speaker(sid_name)
 
+		utils.make_attributes_available(self,'speaker',self.speakers)
 
 	def __str__(self):
 		a = ['file id:\t' + self.fid ]
