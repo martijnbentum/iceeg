@@ -89,14 +89,14 @@ class Word:
 		start and end time, corpus and register.
 		'''
 		if filename: self.filename = filename
-		if fid: self.fid = fid
-		if sid: self.sid = sid
-		if cid: self.cid = cid
-		if wid: self.wid = wid
-		if st: self.st = st
-		if et: self.et = et
-		if corpus: self.corpus = corpus
-		if register: self.register = register
+		if fid != None: self.fid = fid
+		if sid != None: self.sid = sid
+		if cid != None: self.cid = cid
+		if wid != None: self.wid = wid
+		if st != None: self.st = st
+		if et != None: self.et = et
+		if corpus != None: self.corpus = corpus
+		if register != None: self.register = register
 
 	def add_prev_word(self,word = None):
 		# unused, add last word
@@ -117,9 +117,9 @@ class Word:
 
 	def add_times(self,st = None, et= None):
 		'''Adds start and end time.'''
-		if st: self.st = st
-		if et: self.et = et
-		if self.st and self.et:
+		if st != None: self.st = st
+		if et != None: self.et = et
+		if self.st != None and self.et != None:
 			self.duration = round(self.et - self.st,3)
 
 	
@@ -163,11 +163,11 @@ class Word:
 
 	def seconds2sample(self,s):
 		'''Return s*1000 if it is a int or float.'''
-		if type(s) == float or type(s) == int:
-			return int(round(s*1000))
-		else:
-			print(s,'is not a number, returning as is')
-			return s
+		# if type(s) == float or type(s) == int:
+		return int(round(s*1000))
+		# else:
+			# print(s,'is not a number, returning as is')
+			# return s
 
 	def set_times_as_samples(self,offset = 0,baseline = -300,epoch_dur = 1000):
 		'''Set start/end sample number of a word based on offset value
