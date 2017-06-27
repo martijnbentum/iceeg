@@ -3,15 +3,14 @@
 block module contains the block class
 the module is used by the experiment class
 '''
-
-
 import pandas as pd
 import ort
+import utils
 
 class block:
 	'''The block class aggregates timing information for one audio file in the experiment.'''
 
-	def __init__(self,pp_id,exp_type,vmrk,log,bid):
+	def __init__(self,pp_id,exp_type,vmrk,log,bid, fid2ort = None):
 		'''Load general info about start and end time block matches all words 
 		to sample numbers in the vmrk marker file.
 
@@ -20,14 +19,18 @@ class block:
 		exp_type = experiment type ('k' / 'o' / 'ifadv) str
 		vmrk = vmrk object, contains marker information 
 		log = log object, contains start/end times; name audio file
+		bid = block id, int
+		fid2ort = dict that maps file id to ort object default = None, if none ort is created
 		'''
 		self.pp_id = pp_id
 		self.exp_type = exp_type
 		self.vmrk = vmrk
 		self.log = log
 		self.bid = bid
+		self.fid2ort = fid2ort
 		self.set_info()
 		self.load_orts()
+		utils.make_attributes_available(self,'o',self.orts)
 
 
 	def __str__(self):
@@ -98,11 +101,16 @@ class block:
 		self.ncontent_words = 0
 		for i,fid in enumerate(self.fids):
 			# create ort object for fid
-			self.orts.append(ort.Ort(fid,self.sids[0],corpus = self.corpus,register = self.register))
-			if self.exp_type == 'ifadv':
-				# add extra speaker for ifadv and check for overlap between speakers
-				self.orts[-1].add_speaker(self.sids[1])
-				self.orts[-1].check_overlap()
+			if self.fid2ort and fid in self.fid2ort.keys():
+				# orts are already made load them from dictonary
+				self.orts.append(self.fid2ort[fid])
+			else:
+				# otherwise make them now
+				self.orts.append(ort.Ort(fid,self.sids[0],corpus = self.corpus,register = self.register))
+				if self.exp_type == 'ifadv':
+					# add extra speaker for ifadv and check for overlap between speakers
+					self.orts[-1].add_speaker(self.sids[1])
+					self.orts[-1].check_overlap()
 			for w in self.orts[-1].words:
 				# set sample offset (when did the recording start playing 
 				# in sample time, if wav consist of multiple wav add offset
@@ -122,6 +130,7 @@ class block:
 			self.words.extend(self.orts[-1].words)
 		# count number of words in this block
 		self.nwords = len(self.words)
+		self.norts = len(self.orts)
 
 
 
