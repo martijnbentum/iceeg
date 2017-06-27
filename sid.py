@@ -6,6 +6,7 @@ import codecs
 import glob
 import sentence 
 import match_words
+import utils
 
 class Sid:
 	'''Speaker object holds the utterances of a speaker in the audio file
@@ -17,7 +18,7 @@ class Sid:
 	'''
 
 	def __init__(self,fid = None,sid = 'spreker1',path = '../IFADV_ANNOTATION/ORT/',awd_path= '../IFADV_ANNOTATION/AWD/WORD_TABLES/',corpus = 'IFADV',pos_path = 'POS_IFADV/FROG_OUTPUT/',register = 'spontaneous_dialogue'):
-	'''Speaker object holds the utterances of a speaker in the audio file.'''
+		'''Speaker object holds the utterances of a speaker in the audio file.'''
 		if fid == None:
 			fid = 'DVA13U'
 			print('calling sid with default file id: ',fid)
@@ -51,6 +52,8 @@ class Sid:
 		self.add_pos_to_sentences() 
 		self.ncontent_words = 0
 		self.count_content_words()
+		utils.make_attributes_available(self,'s',self.sentences)
+		utils.make_attributes_available(self,'c',self.chunks)
 
 	def __str__(self):
 		a = ['file id:\t' + self.fid ]

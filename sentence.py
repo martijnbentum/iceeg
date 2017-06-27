@@ -1,4 +1,5 @@
 import pos
+import utils
 
 class Sentence:
 	'''A structure containing all words by one speaker between eol charachters ... . ! ?
@@ -19,6 +20,7 @@ class Sentence:
 		self.find_chunk_numbers()
 		self.check_sentence()
 		self.npos_ok = False
+		utils.make_attributes_available(self,'w',self.words)
 
 
 	def __str__(self):
