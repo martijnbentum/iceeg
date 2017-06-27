@@ -1,68 +1,79 @@
-'''Load information for 1 experimental session of 1 participant
+import copy
+import experiment
+from load_all_ort import make_fid2ort
+import session
 
-Experiment class uses block log vmrk objects to load and store all information 
-'''
+class Experiment:
+	'''Experiment object holds all participants of the experiment.'''
 
-import block
-import glob
-import log
-import numpy as np
-import pandas as pd
-import re
-import vmrk
-
-
-class experiment:
-	def __init__(self, pp_id = None,exp_type = None,path = '../'):
-		'''Load information for 1 experimental session of 1 participant
+	def __init__(self,pp_ids= range(1,49),fid2ort = None,make_fid2ort_dict = True,add_all_pp=False, multi_thread = False):
+		'''Load information about participants, linking audio to EEG data.
 
 		Keywords:
-		pp_id = participant number (1-48) int
-		exp_type = experimental type (o/k/ifadv) reflect register of audio file
-		path = default = is set to the partent directory
+		pp_ids = range(1-48), participant numbers can be adapted to only include not excluded participants
+		fid2ort = None, dictionary to map file id (from corpus) to ort object (transcription info)
+		make_fid2ort=True, whether to make a new fid2ort object
+		add_all_pp = False, whether to immediatly load all participants
+		multi_thread = False, wether to use multi threading to load participants
 		'''
+		self.pp_ids = pp_ids
+		if make_fid2ort_dict: self.fid2ort = make_fid2ort()
+		else: self.fid2ort = fid2ort
+		self.pp = []
 
-		print('loading experiment with:',pp_id,exp_type,path)
-		self.path = path
+
+	def add_all_participants(self):
+		'''Add all 48 participants.'''
+		self.pp= []
+		for pp_id in self.pp_ids:
+			self.add_participant(pp_id = pp_id)
+
+
+	def add_participant(self,pp_id = 1,fid2ort = None,deepcopy = True):
+		'''Add a participant to the experiment object.
+
+		You can pass a fid2ort dictionary and specify whether it should deepcopy it
+		Copying the fid2ort takes 18 seconds. It is important to use a unique
+		fid2ort for each participant.
+		'''
+		print('adding participant: '+str(pp_id))
+		print('deepcopying fid2ort, takes 18s')
+		if fid2ort == None:
+			self.pp.append(Participant(pp_id = pp_id, fid2ort =self.fid2ort))
+		else:
+			assert type(fid2ort) == dict
+			self.pp.append(Participant(pp_id = pp_id, fid2ort =fid2ort,deepcopy_fid2ort = deepcopy))
+
+	
+
+class Participant:
+	def __init__(self,pp_id = 1,fid2ort = None,deepcopy_fid2ort = True):
+		'''Aggregate experiment data of one participant.
+
+		Keywords:
+		pp_id = participant number  int
+		fid2ort = dict that maps file id to ort object
+		deepcopy_fid2ort = whether to deepcopy fid2ort (deepcopy is needed to 
+			seperate sample numbers for each word: make sure you do not reuse 
+			ort objects between participants this will overwite sample numbers of the words)
+
+		The samplenumbers link auditory presentation of the sound files to the EEG data) 
+		'''
 		self.pp_id = pp_id
-		self.exp_type = exp_type
-		self.log = log.log(self.pp_id,self.exp_type,self.path)
-		self.session = self.log.session
-		self.vmrk = vmrk.vmrk(self.pp_id,self.exp_type,self.path)
-		self.n_eeg_recordings = self.vmrk.n_eeg_recordings
-		self.set_start_end_times() # start end times experiment
-		self.nblocks = self.log.log['block'].values[-1]
-		self.load_blocks()
+		if deepcopy_fid2ort: self.fid2ort = copy.deepcopy(fid2ort)
+		else:self.fid2ort = fid2ort
+		self.exp_types = ['o','k','ifadv']
+		self.sessions = []
 
-
-	def __str__(self):
-		m = '\nEXPERIMENT OBJECT\n'
-		m += 'Participant number:\t' + str(self.pp_id) + '\n'
-		m += 'Experiment name:\t' + str(self.exp_type) + '\n'
-		m += 'Session number: \t' + str(self.session) + '\n'
-		m += 'nblocks:\t\t' + str(self.nblocks) + '\n'
-		m += 'Start experiment:\t' + str(self.start_exp) + '\n'
-		m += 'End experiment:\t\t' + str(self.end_exp) + '\n'
-		m += 'Duration:\t\t' + str(self.duration).split(' ')[-1] + '\n'
-		m += 'n words:\t\t' + str(self.nwords) + '\n'
-		m += '\n' + '-'*50 + self.vmrk.__str__()
-		m += '\n' + '-'*50 + self.log.__str__()
-		return m
-
-
-	def set_start_end_times(self):
-		'''Set the start and end date of the experiment and calculates duration'''
-		if not self.log.log_fn:
-			return None
-		self.start_exp = self.log.start_exp 
-		self.end_exp = self.log.end_exp
-		self.duration = self.log.duration 
-
+	def add_all_sessions(self):
+		'''Add all experimental sessions.
+		Each session a participant heard speech from a differen register: 
+		o: Read aloud stories k: News broadcast ifadv: Spontaneous dialogues.'''
+		self.sessions = []
+		for exp_type in self.exp_types:
+			self.add_session(exp_type = exp_type)
+	
+	def add_session(self,exp_type = 'o'):
+		'''Add a experimental session to the participant object .'''
+		self.sessions.append(session.Session(self.pp_id,exp_type,self.fid2ort))
 		
-	def load_blocks(self):
-		'''Create a block object for each audio file in the experiment'''
-		self.blocks = []
-		self.nwords = 0
-		for i in range(1,self.nblocks+1):
-			self.blocks.append(block.block(self.pp_id,self.exp_type,self.vmrk,self.log,i))
-			self.nwords += self.blocks[-1].nwords
