@@ -58,7 +58,7 @@ class Word:
 		a.append( 'overlap unk:\t'+str(self.overlap_unknown)) 
 		a.append('corpus:\t\t'+str(self.corpus))
 		a.append('register:\t'+str(self.register))
-		a.append('usable:\t'+str(self.usable))
+		a.append('usable:\t\t'+str(self.usable) + ' (non overlapping, time info present, no special marking, sample number > 0.)')
 		if self.pos_ok:
 			a.append('-'*30)
 			a.append('POS tag INFO')
@@ -114,6 +114,7 @@ class Word:
 		else:
 			self.overlap = overlap 
 			self.overlap_unknown = False
+			if self.overlap: self.usable = True
 
 	def add_times(self,st = None, et= None):
 		'''Adds start and end time.'''
@@ -186,6 +187,7 @@ class Word:
 			self.et_epoch = self.st_sample + epoch_dur
 			self.baseline = baseline
 			self.epoch_dur = epoch_dur
+			if self.st_sample < 0: self.usable = False
 		except:
 			print(self.__str__())
 			self.usable = False
