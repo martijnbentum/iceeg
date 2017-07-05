@@ -30,12 +30,15 @@ class block:
 		self.fid2ort = fid2ort
 		self.set_info()
 		self.load_orts()
-		utils.make_attributes_available(self,'o',self.orts)
+		utils.make_attributes_available(self,'ort',self.orts)
 
 
 	def __str__(self):
 		m = '\nBLOCK OBJECT\n'
 		m += 'marker\t\t\t'+str(self.marker) + '\n'
+		m += 'block missing\t\t'+str(self.block_missing) + '\n'
+		m += 'start marker missing\t'+str(self.block_missing) + '\n'
+		m += 'start marker missing\t'+str(self.block_missing) + '\n'
 		m += 'wav_filename\t\t'+str(self.wav_filename) + '\n'
 		m += 'fids\t\t\t'+' - '.join(self.fids) + '\n'
 		m += 'sids\t\t\t'+' - '.join(self.sids) + '\n'
@@ -47,6 +50,8 @@ class block:
 		m += 'start time\t\t'+str(self.st) + '\n'
 		m += 'et time\t\t\t'+str(self.et) + '\n'
 		m += 'duration\t\t'+str(self.duration) + '\n'
+		m += 'nwords\t\t\t'+str(self.nwords) + '\n'
+		m += 'nsentences\t\t'+str(self.nsentences) + '\n'
 		return m
 
 
@@ -62,11 +67,8 @@ class block:
 		self.wav_filename = self.log.marker2wav[self.marker]
 		self.fids = self.log.marker2fidlist[self.marker]
 		self.sids = self.log.fid2sid[self.fids[0]] # sid does not vary in block
-		self.st_sample = self.vmrk.marker2samplen[self.marker]
-		self.et_sample = self.vmrk.marker2samplen[self.marker+1]
-		self.duration_sample = self.et_sample - self.st_sample
 		self.wav_dur= self.l[self.l['block'] == self.bid]['wav_duration'].values[0]
-		self.sample_inacc = abs(self.duration_sample -self.wav_dur)
+		self.set_start_end_times()
 		self.st = self.l[self.l['block'] == self.bid]['start_time'].values[0]
 		self.et = self.l[self.l['block'] == self.bid]['end_time'].values[0]
 		self.duration = self.et - self.st
@@ -79,6 +81,34 @@ class block:
 		elif self.exp_type == 'k': 
 			self.corpus = 'CGN'
 			self.register = 'news_broadcast' 
+
+
+	def set_start_end_times(self):
+		print('marker:',self.marker)
+		'''Set start and end sample numbers.
+
+		check whether all markers are present otherwise use audio file duration to calculate
+			Sample number will point to missing data, needs to be handled elsewhere.
+		'''
+		self.start_marker_missing = self.marker in self.vmrk.missing_smarkers
+		self.end_marker_missing = self.marker + 1 in self.vmrk.missing_emarkers
+		self.block_missing = self.start_marker_missing == self.end_marker_missing == True
+		if not self.start_marker_missing:
+			self.st_sample = self.vmrk.marker2samplen[self.marker]
+		if not self.end_marker_missing:
+			self.et_sample = self.vmrk.marker2samplen[self.marker+1]
+		if not self.block_missing:
+			if self.start_marker_missing:
+				self.st_sample = self.et_sample - self.wav_dur
+			elif self.end_marker_missing:
+				self.et_sample = self.st_sample + self.wav_dur
+			self.duration_sample = self.et_sample - self.st_sample
+			self.sample_inacc = abs(self.duration_sample - self.wav_dur)
+		else:
+			self.st_sample = None
+			self.et_sample = None
+			self.duration_sample = None
+			self.sample_inacc = None
 
 
 	def load_orts(self):
@@ -97,6 +127,7 @@ class block:
 		k_wav_offset_sample= 900
 		self.orts = []
 		self.words = []
+		self.sentences = []
 		total_fids_offset = 0
 		self.ncontent_words = 0
 		for i,fid in enumerate(self.fids):
@@ -126,10 +157,12 @@ class block:
 			if self.exp_type in ['o','k']:
 				# get the duration of the las wav file
 				last_fid_duration = self.log.fid2dur[fid]
-			# add all words of the ort object corresponding to fid to the block
+			# add all words and sentences of the ort object corresponding to fid to the block
 			self.words.extend(self.orts[-1].words)
+			self.sentences.extend(self.orts[-1].sentences)
 		# count number of words in this block
 		self.nwords = len(self.words)
+		self.nsentences= len(self.sentences)
 		self.norts = len(self.orts)
 
 
