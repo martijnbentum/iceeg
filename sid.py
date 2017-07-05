@@ -175,13 +175,15 @@ class Sid:
 			sentence_wl.append(w)
 			if w.eol:
 				self.sentences.append(sentence.Sentence(sentence_wl,sentence_index))
+				if self.corpus == 'CGN':
+					self.sentences[-1].overlap_unknown = False
 				sentence_index += 1
 				sentence_wl = []
 		self.nsentences = len(self.sentences)
 
 
 	def print_utf8_sentences(self,filename = 'sentences_utf8'):
-		# creates a file with all sentences of this speaker
+		'''Create a file with all sentences of this speaker.'''
 		filename = filename + '_' + self.fid + '_' + self.sid + '.txt'
 		print('saving all sentences to:',filename)
 		output = []
