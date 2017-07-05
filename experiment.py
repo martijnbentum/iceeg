@@ -2,6 +2,7 @@ import copy
 import experiment
 from load_all_ort import make_fid2ort
 import session
+import utils
 
 class Experiment:
 	'''Experiment object holds all participants of the experiment.'''
@@ -29,7 +30,7 @@ class Experiment:
 			self.add_participant(pp_id = pp_id)
 
 
-	def add_participant(self,pp_id = 1,fid2ort = None,deepcopy = True):
+	def add_participant(self,pp_id = 1,fid2ort = None,deepcopy_fid2ort = True):
 		'''Add a participant to the experiment object.
 
 		You can pass a fid2ort dictionary and specify whether it should deepcopy it
@@ -37,12 +38,10 @@ class Experiment:
 		fid2ort for each participant.
 		'''
 		print('adding participant: '+str(pp_id))
-		print('deepcopying fid2ort, takes 18s')
 		if fid2ort == None:
-			self.pp.append(Participant(pp_id = pp_id, fid2ort =self.fid2ort))
-		else:
-			assert type(fid2ort) == dict
-			self.pp.append(Participant(pp_id = pp_id, fid2ort =fid2ort,deepcopy_fid2ort = deepcopy))
+			fid2ort = self.fid2ort
+		self.pp.append(Participant(pp_id, fid2ort,deepcopy_fid2ort))
+		utils.make_attributes_available(self,'pp',[self.pp[-1]],False,str(pp_id))
 
 	
 
@@ -60,10 +59,17 @@ class Participant:
 		The samplenumbers link auditory presentation of the sound files to the EEG data) 
 		'''
 		self.pp_id = pp_id
-		if deepcopy_fid2ort: self.fid2ort = copy.deepcopy(fid2ort)
+		if deepcopy_fid2ort and fid2ort != None: 
+			assert type(fid2ort) == dict
+			print('deepcopying fid2ort, takes 18s')
+			self.fid2ort = copy.deepcopy(fid2ort)
 		else:self.fid2ort = fid2ort
 		self.exp_types = ['o','k','ifadv']
 		self.sessions = []
+		self.nwords = 0
+
+	def __str__(self):
+		pass
 
 	def add_all_sessions(self):
 		'''Add all experimental sessions.
@@ -76,4 +82,14 @@ class Participant:
 	def add_session(self,exp_type = 'o'):
 		'''Add a experimental session to the participant object .'''
 		self.sessions.append(session.Session(self.pp_id,exp_type,self.fid2ort))
+		utils.make_attributes_available(self,'s',[self.sessions[-1]],False,exp_type)
+		self.nwords += self.sessions[-1].nwords
+			
+
 		
+
+'''
+		nrecord = self.sessions[-1].vmrk.n_eeg_recordings
+		setattr(self,'nrecordings_'+exp_type,nrecord)
+		setattr(self,'nblock_'+exp_type, self.session[-1].nblock)
+'''
