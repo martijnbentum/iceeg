@@ -45,6 +45,8 @@ class Ort:
 		self.nspeakers = 0
 		self.speakers = [] 
 		self.words = []
+		self.sentences = []
+		self.sentence_overlap_indices = []
 
 		if sid:
 			self.add_speaker(sid_name)
@@ -89,6 +91,7 @@ class Ort:
 		self.speakers_present = True
 		self.nspeakers += 1
 		self.words.extend(self.speakers[-1].words)
+		self.sentences.extend(self.speakers[-1].sentences)
 
 
 	def check_overlap(self):
@@ -119,6 +122,11 @@ class Ort:
 				c.check_overlap()
 				if c.overlap and not c.overlap_unknown:
 					s.chunk_overlap_indices.append(i)
+
+			for j,se in enumerate(s.sentences):
+				se.check_overlap()
+				if se.overlap and not se.overlap_unknown:
+					self.sentence_overlap_indices.append(j)
 
 		s1.n_chunk_overlap = len(s1.chunk_overlap_indices)
 		s1.n_word_overlap = len(s1.word_overlap_indices)
