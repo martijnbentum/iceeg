@@ -20,11 +20,18 @@ class Sentence:
 		self.find_chunk_numbers()
 		self.check_sentence()
 		self.npos_ok = False
+		self.overlap = False
+		self.overlap_unknown = True
 		utils.make_attributes_available(self,'w',self.words)
+		self.set_info()
 
 
 	def __str__(self):
 		a = ['sentence:\t'+self.string_words()]
+		a.append('register:\t'+str(self.register))
+		a.append('corpus:\t\t'+str(self.corpus))
+		a.append('fid:\t\t'+str(self.fid))
+		a.append('sid:\t\t'+str(self.sid))
 		a.append('nwords:\t\t'+str(self.nwords))
 		a.append('start_time:\t'+str(self.st))
 		a.append('end_time:\t'+str(self.et))
@@ -34,6 +41,12 @@ class Sentence:
 		a.append('sentence ok:\t'+str(self.ok))
 		a.append('npos_ok:\t'+str(self.npos_ok))
 		return '\n'.join(a)
+
+	def set_info(self):
+		self.sid = self.words[0].sid
+		self.fid = self.words[0].fid
+		self.register = self.words[0].register
+		self.corpus = self.words[0].corpus
 
 
 	def print_words(self):
@@ -93,3 +106,10 @@ class Sentence:
 				w.pos = pos.Pos(pos_tag,self.sentence_number)
 				if w.word_utf8_nocode == w.pos.token: w.pos_ok = True
 				else: w.pos_ok = False
+
+
+	def check_overlap(self):
+		self.overlap = False
+		for w in self.words:
+			if w.overlap:
+				self.overlap = True
