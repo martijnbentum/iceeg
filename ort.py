@@ -6,6 +6,7 @@ import glob
 import sid
 import utils
 
+verbose = False
 
 class Ort:
 	'''Create struture that holds start and end times and POS tag for all words in an audio file.
@@ -17,7 +18,7 @@ class Ort:
 	as does frequency
 	'''
 
-	def __init__(self,fid = None,sid_name = 'spreker1', path = None,awd_path = None,corpus = 'IFADV', pos_path = None,register = 'spontaneous_dialogue',auto_set_paths = True):
+	def __init__(self,fid = None,sid_name = 'spreker1', path = None,awd_path = None,corpus = 'IFADV', pos_path = None,register = 'spontaneous_dialogue',auto_set_paths = True,set_verbose = False):
 		'''Load information about words in the audio
 
 		Keywords:
@@ -28,10 +29,12 @@ class Ort:
 		register = type of speech (spontaneous_dialogue/news_broadcast/read_aloud_stories)
 		auto_set_paths = set paths based on register and corpus
 		'''
+		global verbose
+		verbose = set_verbose
 		if fid == None:
 			fid = 'DVA13U'
 			print('calling ort class with default file id: ',fid)
-		print('creating ort with file id:',fid,' and speaker id:',sid_name)
+		if verbose: print('creating ort with file id:',fid,' and speaker id:',sid_name)
 		self.fid = fid
 		self.auto_set_paths = True
 		self.corpus = corpus
@@ -66,12 +69,12 @@ class Ort:
 		if not self.auto_set_paths: 
 			print('not setting paths')
 		elif self.corpus == 'IFADV':
-			print('setting paths for IFADV')
+			if verbose: print('setting paths for IFADV')
 			self.path = '../IFADV_ANNOTATION/ORT/'
 			self.awd_path = '../IFADV_ANNOTATION/AWD/WORD_TABLES/'
 			self.pos_path = 'POS_IFADV/FROG_OUTPUT/'
 		elif self.corpus == 'CGN': 
-			print('setting paths for CGN')
+			if verbose: print('setting paths for CGN')
 			self.path = '../TABLE_CGN2_ORT/' 
 			self.awd_path = '../TABLE_CGN2_AWD/'
 			if self.register == 'read_aloud_stories':self.pos_path='POS_O/FROG_OUTPUT/'
