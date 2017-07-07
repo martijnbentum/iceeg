@@ -61,7 +61,7 @@ class Session:
 
 
 	def __str__(self):
-		m = '\nEXPERIMENT OBJECT\n'
+		m = '\nSESSION OBJECT\n'
 		m += 'Participant number:\t' + str(self.pp_id) + '\n'
 		m += 'Experiment name:\t' + str(self.exp_type) + '\n'
 		m += 'Session number: \t' + str(self.session) + '\n'
