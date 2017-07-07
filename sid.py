@@ -8,6 +8,8 @@ import sentence
 import match_words
 import utils
 
+verbose = False
+
 class Sid:
 	'''Speaker object holds the utterances of a speaker in the audio file
 
@@ -17,12 +19,14 @@ class Sid:
 	words hold timing info and POS object, surprisal needs to be added
 	'''
 
-	def __init__(self,fid = None,sid = 'spreker1',path = '../IFADV_ANNOTATION/ORT/',awd_path= '../IFADV_ANNOTATION/AWD/WORD_TABLES/',corpus = 'IFADV',pos_path = 'POS_IFADV/FROG_OUTPUT/',register = 'spontaneous_dialogue'):
+	def __init__(self,fid = None,sid = 'spreker1',path = '../IFADV_ANNOTATION/ORT/',awd_path= '../IFADV_ANNOTATION/AWD/WORD_TABLES/',corpus = 'IFADV',pos_path = 'POS_IFADV/FROG_OUTPUT/',register = 'spontaneous_dialogue',set_verbose = False):
 		'''Speaker object holds the utterances of a speaker in the audio file.'''
+		global verbose
+		verbose = set_verbose
 		if fid == None:
 			fid = 'DVA13U'
 			print('calling sid with default file id: ',fid)
-		print('creating sid with file id:',fid,' and speaker id:',sid)
+		if verbose: print('creating sid with file id:',fid,' and speaker id:',sid)
 		self.fid = fid
 		self.sid = sid
 		self.path = path
@@ -75,7 +79,7 @@ class Sid:
 
 	def set_sid(self,sid = 'spreker1'):
 		'''Set speaker id.'''
-		print('setting speaker id, sid was:',self.sid)
+		if verbose: print('setting speaker id, sid was:',self.sid)
 		self.sid = sid
 		print('sid now is:',self.sid)
 	
@@ -148,7 +152,7 @@ class Sid:
 		'''Add chunk to the ort object, a chunk is a basic unit of orthografic
 		transcription and represented as an object consisting of words.
 		'''
-		print('adding chunks to sid')
+		if verbose: print('adding chunks to sid')
 		ort_text = self.remove_header(self.ort_text)
 		self.chunks = []
 		self.nwords,self.nchunks = 0,0
@@ -167,7 +171,7 @@ class Sid:
 
 	def make_sentences(self):
 		'''Make a sentence from all consecutive words from 1 speaker between eol (. ! ?).'''
-		print('creating sentences, words between eols')
+		if verbose: print('creating sentences, words between eols')
 		self.sentences = []
 		sentence_wl = []
 		sentence_index = 0
@@ -205,7 +209,7 @@ class Sid:
 			print('file(s) found:',fn)
 			self.pos_text_ok = False
 			return 0
-		print('reading FROG output pos tags, with',self.fid,self.sid,'\nfilename:',fn[0])
+		if verbose: print('reading FROG output pos tags, with',self.fid,self.sid,'\nfilename:',fn[0])
 		self.pos_text_ok = True
 		self.pos_filename = fn[0]
 		self.pos_text = codecs.open(self.pos_filename,'r','utf8').read().split('\n')
@@ -219,7 +223,7 @@ class Sid:
 			print('pos tags not read in')
 			self.npos_sentences_ok = False
 			return 0
-		print('splitting pos text into sentences')
+		if verbose: print('splitting pos text into sentences')
 		self.pos_sentences = []
 		pos_wl = []
 		for line in self.pos_text:
@@ -234,7 +238,7 @@ class Sid:
 				
 	def add_pos_to_sentences(self):
 		'''Adding pos object (with pos info) to each word in the sentence.'''
-		print('adding pos tags to words in sentences')
+		if verbose: print('adding pos tags to words in sentences')
 		if self.pos_text_ok == False:
 			print('pos tags not read in')
 			return 0
