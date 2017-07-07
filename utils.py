@@ -74,6 +74,110 @@ def make_events(start_end_sample_number_list):
 
 	structure:   samplenumber 0 id_number
 	dimension 3 X n_events.
+	WORK IN PROGRESS
 	'''
 	if set([len(line) for line in start_end_sample_number_list]):
 		return np.asarray(output)	
+
+
+def get_path_blockwavname(register, blockwav_name ):
+	'''Return wavname corresponding to register and blockwav_name.
+
+	blockwav_name is the filename of the experiment audio file.
+	'''
+	print(register,blockwav_name)
+	if register == 'spontaneous_dialogue':
+		path = '/Users/Administrator/storage/EEG_study_ifadv_cgn/IFADV/'
+	elif register== 'read_aloud_stories':
+		path = '/Users/Administrator/storage/EEG_study_ifadv_cgn/comp-o/'
+	elif register == 'news_broadcast':
+		path = '/Users/Administrator/storage/EEG_study_ifadv_cgn/comp-k/'
+	else: raise Exception('Unknown register:',register)
+
+	blockwav_path = path + blockwav_name
+	return blockwav_path
+
+
+def get_path_fidwav(register, fid):
+	'''Return wavname corresponding to register and file id.'''
+	if register == 'spontaneous_dialogue':
+		path = '/Users/Administrator/storage/EEG_study_ifadv_cgn/IFADV/'
+	elif register== 'read_aloud_stories':
+		path = '/Users/Administrator/storage/cgn_audio/comp-o/nl/'
+	elif register == 'news_broadcast':
+		path = '/Users/Administrator/storage/CGN/comp-k/'
+	else: raise Exception('Unknown register:',register)
+
+	fn = glob.glob(path + fid + '*')
+	if len(fn) == 1: wavname = fn[0]
+	else:
+		print('Could not find:',fn,' in:',path)
+		return ''
+	return path + wavname
+
+
+def get_start_end_times_relative2blockwav(b, item, sf=1000):
+	'''Return start end times of item in relation to blockwav.
+
+	Samplenumbers are relative to start experimental audio file
+	for both comp-o and comp-k multiple corpus audiofiles were used
+	to create the experimental audio file.
+
+	sample frequency = 1000
+	'''
+	start_block = b.st_sample
+	start_time = item.st_sample
+	
+	end_time = item.et_sample
+
+	start_sec = (start_time - start_block) / sf 
+	end_sec = (end_time - start_block) / sf
+	
+	return start_sec,end_sec
+
+
+def extract_audio(b, item, filename = 'default_audio_chunk'):
+	'''Extract part from audio file.
+
+	part is specified by item, can be word, chunk or sentence
+	block info is needed to find times relative to onset experimental audio file.
+	
+	wave currently has has a namespace clash with local chunk
+	wave imports chunk and my local chunk takes precedence.
+	'''
+	import sys
+	save_path = sys.path[:]
+	sys.path.remove('')
+	import wave
+	sys.path = save_path
+
+	if not filename.endswith('.wav'): filename += '.wav'
+	wavname = get_path_blockwavname(b.register, b.wav_filename)
+	start,end = get_start_end_times_relative2blockwav(b, item)
+	print('Audio name:',wavname,'start/end:',start,end)
+
+	audio = wave.open(wavname,'rb')
+	framerate = audio.getframerate()
+	nchannels = audio.getnchannels()
+	sampwidth = audio.getsampwidth()
+
+	audio.setpos(start * framerate)
+	chunk = audio.readframes(int((end-start) * framerate))
+
+	chunk_audio = wave.open(filename,'wb')
+	chunk_audio.setnchannels(nchannels)
+	chunk_audio.setsampwidth(sampwidth)
+	chunk_audio.setframerate(framerate)
+	chunk_audio.writeframes(chunk)
+	chunk_audio.close()
+	print('Extracted from:',wavname,'start/end:',start,end,'written to:',filename)
+	del wave
+
+
+
+
+
+
+
+
+		
