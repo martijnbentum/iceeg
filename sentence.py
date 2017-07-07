@@ -109,7 +109,14 @@ class Sentence:
 
 
 	def check_overlap(self):
+		'''check whether the sentence overlaps in time with a sentence of other speaker.'''
 		self.overlap = False
 		for w in self.words:
 			if w.overlap:
 				self.overlap = True
+		self.overlap_unknown = False
+
+	def set_samplenumbers(self):
+		'''set sample time based on the start and end sample of first and last word respectively.'''
+		self.st_sample = self.words[0].st_sample
+		self.et_sample = self.words[0].et_sample
