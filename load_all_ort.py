@@ -1,4 +1,4 @@
-def make_fid2ort(verbose = True):
+def make_fid2ort(verbose = False):
 	import ort
 	'''Make fid2ort dictionary that maps file id to ort objects.
 
