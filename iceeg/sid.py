@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
  
-import chunk
+import annot_chunk 
 import codecs
 import glob
 import sentence 
@@ -159,7 +159,7 @@ class Sid:
 		self.words = []
 		self.last_awd_index= 0 
 		for i,line in enumerate(ort_text):
-			c = chunk.Chunk(line,i,self.ort_filename,self.fid,self.sid,corpus =self.corpus,register = self.register)
+			c = annot_chunk.Chunk(line,i,self.ort_filename,self.fid,self.sid,corpus =self.corpus,register = self.register)
 			awd_items_in_chunk = self.find_awd_items_in_chunk(c)
 			c.add_awd_items_in_chunk(awd_items_in_chunk)
 			c.match_awd2word()

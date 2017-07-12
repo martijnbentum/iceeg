@@ -3,6 +3,7 @@
  
 import codecs
 import glob
+import path
 import sid
 import utils
 
@@ -70,18 +71,18 @@ class Ort:
 			print('not setting paths')
 		elif self.corpus == 'IFADV':
 			if verbose: print('setting paths for IFADV')
-			self.path = '../IFADV_ANNOTATION/ORT/'
-			self.awd_path = '../IFADV_ANNOTATION/AWD/WORD_TABLES/'
-			self.pos_path = 'POS_IFADV/FROG_OUTPUT/'
+			self.path = path.ifadv_ort
+			self.awd_path = path.ifadv_awd
+			self.pos_path = path.ifadv_pos
 		elif self.corpus == 'CGN': 
 			if verbose: print('setting paths for CGN')
-			self.path = '../TABLE_CGN2_ORT/' 
-			self.awd_path = '../TABLE_CGN2_AWD/'
-			if self.register == 'read_aloud_stories':self.pos_path='POS_O/FROG_OUTPUT/'
-			elif self.register == 'news_broadcast':self.pos_path='POS_K/FROG_OUTPUT/'
+			self.path = path.cgn_ort
+			self.awd_path = path.cgn_awd
+			if self.register == 'read_aloud_stories':self.pos_path= path.compo_pos
+			elif self.register == 'news_broadcast':self.pos_path= path.compk_pos
 			else:
 				print('unknown register:',self.register)
-				self.pos_path = 'POS_O/FROG_OUTPUT/'
+				self.pos_path = path.compo_pos
 				print('setting pos_path to comp-o:',self.pos_path)
 		else:
 			print('unknown corpus',self.corpus,'please set paths yourself')
