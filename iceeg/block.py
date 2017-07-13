@@ -3,6 +3,7 @@
 block module contains the block class
 the module is used by the experiment class
 '''
+import mne
 import pandas as pd
 import ort
 import utils
@@ -31,6 +32,7 @@ class block:
 		self.set_info()
 		self.load_orts()
 		utils.make_attributes_available(self,'ort',self.orts)
+		self.eeg_loaded = False
 
 
 	def __str__(self):
@@ -52,6 +54,8 @@ class block:
 		m += 'duration\t\t'+str(self.duration) + '\n'
 		m += 'nwords\t\t\t'+str(self.nwords) + '\n'
 		m += 'nsentences\t\t'+str(self.nsentences) + '\n'
+		m += 'eeg loaded\t\t'+str(self.eeg_loaded) + '\n'
+		m += self.blinks.__str__()
 		return m
 
 
@@ -110,6 +114,24 @@ class block:
 			self.duration_sample = None
 			self.sample_inacc = None
 
+
+	def load_eeg_data(self):
+		'''Load eeg data corresponding to this block.'''
+		self.raw = preprocessing.load_block(self)
+		self.eeg_loaded = True
+
+	def load_blinks(self):
+		fn = path.blinks + block.vmrk.vmrk_fn.split('/')[-1].replace('.vmrk','.blinks')
+		if not os.path.isfile(fn):
+			print('File does not excist, loading eeg data')
+			self.load_eeg_data()
+			self.detect_blinks()
+		self.blinks = preprocessing.load_blinks(self) 
+
+	def detect_blinks(self):
+		self.blinks = preprocess.detect_blinks(self.raw)
+		
+		
 
 	def load_orts(self):
 		'''create the ort object for all fids (file id) in the block  
