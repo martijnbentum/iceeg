@@ -1,12 +1,12 @@
 import copy
-from load_all_ort import make_fid2ort
+import load_all_ort 
 import session
 import utils
 
 class Experiment:
 	'''Experiment object holds all participants of the experiment.'''
 
-	def __init__(self,pp_ids= range(1,49),fid2ort = None,make_fid2ort_dict = True,add_all_pp=False, multi_thread = False):
+	def __init__(self,pp_ids= range(1,49),add_all_pp=False, multi_thread = False):
 		'''Load information about participants, linking audio to EEG data.
 
 		Keywords:
@@ -17,8 +17,6 @@ class Experiment:
 		multi_thread = False, wether to use multi threading to load participants
 		'''
 		self.pp_ids = pp_ids
-		if make_fid2ort_dict: self.fid2ort = make_fid2ort()
-		else: self.fid2ort = fid2ort
 		self.pp = []
 
 
@@ -29,7 +27,7 @@ class Experiment:
 			self.add_participant(pp_id = pp_id)
 
 
-	def add_participant(self,pp_id = 1,fid2ort = None,deepcopy_fid2ort = True):
+	def add_participant(self,pp_id = 1):
 		'''Add a participant to the experiment object.
 
 		You can pass a fid2ort dictionary and specify whether it should deepcopy it
@@ -37,32 +35,24 @@ class Experiment:
 		fid2ort for each participant.
 		'''
 		print('adding participant: '+str(pp_id))
-		if fid2ort == None:
-			fid2ort = self.fid2ort
-		self.pp.append(Participant(pp_id, fid2ort,deepcopy_fid2ort))
+		self.pp.append(Participant(pp_id))
 		utils.make_attributes_available(self,'pp',[self.pp[-1]],False,str(pp_id))
 
 	
 
 class Participant:
-	def __init__(self,pp_id = 1,fid2ort = None,deepcopy_fid2ort = True):
+	def __init__(self,pp_id = 1,fid2ort = None):
 		'''Aggregate experiment data of one participant.
 
 		Keywords:
 		pp_id = participant number  int
-		fid2ort = dict that maps file id to ort object
-		deepcopy_fid2ort = whether to deepcopy fid2ort (deepcopy is needed to 
-			seperate sample numbers for each word: make sure you do not reuse 
-			ort objects between participants this will overwite sample numbers of the words)
-
-		The samplenumbers link auditory presentation of the sound files to the EEG data) 
 		'''
 		self.pp_id = pp_id
-		if deepcopy_fid2ort and fid2ort != None: 
+		if fid2ort != None: 
 			assert type(fid2ort) == dict
-			print('deepcopying fid2ort, takes 18s')
-			self.fid2ort = copy.deepcopy(fid2ort)
-		else:self.fid2ort = fid2ort
+			print('Beware that if you reuse fid2ort, sample information if overwritten.')
+			self.fid2ort = fid2ort
+		else: self.fid2ort = load_all_ort.load_fid2ort()
 		self.exp_types = ['o','k','ifadv']
 		self.sessions = []
 		self.nwords = 0
