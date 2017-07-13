@@ -1,6 +1,8 @@
 # import filter_butterworth as bw
+import blinks
 import matplotlib.pyplot as plt
 import mne
+import peakutils
 
 plt.ion()
 
@@ -110,7 +112,14 @@ def filter_iir(raw,order = 5,freq = [0.05,30],sf = 1000,pass_type = 'bandpass'):
 	raw.filter(iir_params =iir_params,l_freq= freq[0],h_freq=freq[1],method = 'iir')
 	return raw 
 
+def detect_blinks(raw,pre = 200, post = 300,thres = 0.45, min_dist = 200, plot = True):
+	'''Detecting blinks based on raw eeg data object.'''
+	return blinks.Blinks(raw,pre,post,thres,min_dist,plot)
 
+def load_blinks(block = None):
+	'''Loading pickle blink file.'''
+	return blinks.Blinks(block = block)
+	
 def plot(df):
 	plt.plot(df.Fz)
 	plt.show()
