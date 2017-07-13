@@ -14,5 +14,5 @@ cgn_ort = cgn_annot + 'TABLE_CGN2_ORT/'
 ifadv_ort = ifadv_annot + 'ORT/'
 ifadv_awd = ifadv_annot + 'AWD/'
 
-
+blinks = data + 'BLINKS/'
 
