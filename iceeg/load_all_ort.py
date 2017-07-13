@@ -1,4 +1,5 @@
 import path
+import pickle
 
 def make_fid2ort(verbose = False):
 	import ort
@@ -52,3 +53,15 @@ def make_fid2ort(verbose = False):
 		print('all times 48 pp',(ifadv_ncontent_words+k_ncontent_words+o_ncontent_words)*48)
 	return fid2ort
 
+def save_fid2ort(fid2ort):
+	'''Save fid2ort in a pickle to the data directory.'''
+	fout = open(path.data + 'fid2ort.dict','wb')
+	pick.dump(fid2ort,fout,-1)
+	fout.close()
+
+def load_fid2ort():
+	'''Load the fid2ort dictionary.'''
+	fin = open(path.data + 'fid2ort.dict','rb')
+	fid2ort = pickle.load(fin)
+	fin.close()
+	return fid2ort
