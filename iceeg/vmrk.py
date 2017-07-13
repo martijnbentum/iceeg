@@ -5,8 +5,8 @@ vmrk module contains the vmrk class
 
 import glob
 import numpy as np
+import path
 import re
-PATH = '../'
 
 class vmrk:
 	'''Class to aggregate information about markers and sample numbers.
@@ -16,7 +16,7 @@ class vmrk:
 	.events (obsolete) makes a np array compatible with MNE for all markers
 	'''
 
-	def __init__(self,pp_id = None,exp_type = None,path = '../',verbose = False):
+	def __init__(self,pp_id = None,exp_type = None,verbose = False):
 		'''Load and process BrainVision marker files
 
 		Keywords:
@@ -26,11 +26,9 @@ class vmrk:
 		'''
 		self.verbose = verbose
 		if self.verbose:
-			print('loading vmrk with:\t',pp_id,exp_type,path)
-		self.path = path
+			print('loading vmrk with:\t',pp_id,exp_type,path.data)
 		self.pp_id = pp_id
 		self.exp_type = exp_type
-		self.path = path
 		self.read_vmrk()
 		self.vmrk2events()# creates an np array events from 1 or more vmrk lists
 		self.vmrk2dict() # creates a dict with markers as keys and sample numbers as values
@@ -49,7 +47,7 @@ class vmrk:
 		sometimes 1 EEG session was recorded in multiple file (because of battery failure)
 		'''
 		pp_id = str(self.pp_id)
-		fn = glob.glob(self.path + 'EEG/pp*' + pp_id + '_' \
+		fn = glob.glob(path.data + 'EEG/pp*' + pp_id + '_' \
 			+ self.exp_type + '*.vmrk')
 		matches = []
 		for f in fn:

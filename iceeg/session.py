@@ -9,6 +9,7 @@ import glob
 import log
 import numpy as np
 import pandas as pd
+import path
 import re
 import utils
 import vmrk
@@ -35,7 +36,7 @@ class Session:
 	The .vmrk object contains BrainVision marker data
 	'''
 
-	def __init__(self, pp_id = None,exp_type = None,fid2ort = None,path = '../'):
+	def __init__(self, pp_id = None,exp_type = None,fid2ort = None):
 		'''Load information for 1 experimental session of 1 participant
 
 		Keywords:
@@ -45,14 +46,13 @@ class Session:
 		path = default is set to the parent directory
 		'''
 
-		print('loading session with:',pp_id,exp_type,path)
-		self.path = path
+		print('loading session with:',pp_id,exp_type)
 		self.pp_id = pp_id
 		self.exp_type = exp_type
 		self.fid2ort = fid2ort
-		self.log = log.log(self.pp_id,self.exp_type,self.path)
+		self.log = log.log(self.pp_id,self.exp_type)
 		self.session = self.log.session
-		self.vmrk = vmrk.vmrk(self.pp_id,self.exp_type,self.path)
+		self.vmrk = vmrk.vmrk(self.pp_id,self.exp_type)
 		self.n_eeg_recordings = self.vmrk.n_eeg_recordings
 		self.set_start_end_times() # start end times experiment
 		self.nblocks = self.log.log['block'].values[-1]

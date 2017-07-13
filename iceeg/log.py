@@ -1,6 +1,6 @@
 import glob
 import pandas as pd
-PATH = '../'
+import path
 
 class log:
 	'''Aggregate information about start/end times in the experiment.
@@ -18,7 +18,7 @@ class log:
 		(should be extended with answer accuracy and temperature and humidety)
 	'''
 	
-	def __init__(self, pp_id = None,exp_type = None,path = None):
+	def __init__(self, pp_id = None,exp_type = None):
 		'''Aggregate information about start/end times of events in the experiment.
 		
 		Keywords:
@@ -26,9 +26,7 @@ class log:
 		exp_type = experimental type (k/o/ifadv) reflects register of speech in audio file str
 		'''
 
-		print('loading log object with:',pp_id,exp_type,path)
-		if not path: self.path = PATH
-		else: self.path = path	
+		print('loading log object with:',pp_id,exp_type,path.data)
 		self.pp_id = pp_id
 		self.exp_type = exp_type
 		self.session = None
@@ -115,7 +113,7 @@ class log:
 
 	def find_log_filename(self):
 		'''Find the filename based on pp_id and exp type, sets to none if it fails.'''
-		temp = glob.glob(self.path + 'log/pp' +str(self.pp_id) \
+		temp = glob.glob(path.data + 'log/pp' +str(self.pp_id) \
 			+ '_' + self.exp_type + '_log*.txt')
 		try:
 			self.log_fn = temp[0]
@@ -126,7 +124,7 @@ class log:
 
 	def find_answer_filename(self):
 		'''Finds the filename based on pp_id and exp type, sets to none if it fails.'''
-		temp = glob.glob(self.path + 'log/pp' +str(self.pp_id) \
+		temp = glob.glob(path.data + 'log/pp' +str(self.pp_id) \
 			+ '_' + self.exp_type + '_answers*.txt')
 		try:
 			self.answer_fn = temp[0]
@@ -140,7 +138,7 @@ class log:
 			names = 'speaker1,speaker2,fid,order,filename'.split(',')
 		else:
 			names = 'speaker1,fid,order,filename'.split(',')
-		f = '../fnlist_'+self.exp_type+'.txt'
+		f = path.data + '/fnlist_'+self.exp_type+'.txt'
 		self.fnlist = pd.read_table(filepath_or_buffer=f,sep = '\t',names =names)
 
 
@@ -178,9 +176,9 @@ class log:
 		(also contains info on the location of the wav file)
 		'''
 		if self.exp_type == 'o':
-			self.fid_duration = [line.split('\t') for line in open('../fids_duration_o.txt')]
+			self.fid_duration = [line.split('\t') for line in open(path.data+'/fids_duration_o.txt')]
 		if self.exp_type == 'k':
-			self.fid_duration = [line.split('\t') for line in open('../fids_duration_k.txt')]
+			self.fid_duration = [line.split('\t') for line in open(path.data+'/fids_duration_k.txt')]
 		if self.exp_type == 'o' or self.exp_type == 'k':
 			self.fid2dur = dict([[l[0],int(float(l[1])*1000)] for l in self.fid_duration])
 
