@@ -11,11 +11,19 @@ def load_block(b):
 
 	should think about filtering and edge effects
 	'''
-	vhdr_fn = b.vmrk.vmrk_fn.replace('.vmrk','.vhdr')
+	if b.marker in b.vmrk.marker2vmrk_fn:
+		vhdr_fn = b.vmrk.marker2vmrk_fn[b.marker].replace('.vmrk','.vhdr')
+	else:
+		return 0
+
 	raw = load_eeg(vhdr_fn = vhdr_fn)
 
 	start_sec = b.st_sample / 1000
 	end_sec = b.et_sample / 1000
+	if start_sec < 0: 
+		start_sec = 0
+	if end_sec > (len(raw) /1000): 
+		end_sec = int(len(raw) /1000)
 
 	raw.crop(tmin = start_sec, tmax = end_sec)
 	raw.load_data()
@@ -105,16 +113,19 @@ def filter_iir(raw,order = 5,freq = [0.05,30],sf = 1000,pass_type = 'bandpass'):
 	iir_params = mne.filter.construct_iir_filter(iir_params, freq,None,sf, \
 		pass_type, return_copy = False)
 	print('creating IIR butterworth filter with following params:\n',iir_params)
-	print('frequency cut off:','\t'.join(map(str,freq)))
+	print('frequency cut off:','\t',freq)
 	print('sample frequency:',sf)
 	print('filter pass_type:',pass_type)
  
-	raw.filter(iir_params =iir_params,l_freq= freq[0],h_freq=freq[1],method = 'iir')
+	if pass_type == 'bandpass':
+		raw.filter(iir_params =iir_params,l_freq= freq[0],h_freq=freq[1],method = 'iir')
+	else:
+		raw.filter(iir_params =iir_params,l_freq = None,h_freq=freq,method = 'iir')
 	return raw 
 
-def detect_blinks(raw,pre = 200, post = 300,thres = 0.45, min_dist = 200, plot = True):
+def detect_blinks(raw,pre = 200, post = 300,thres = 50, min_dist = 200, plot = False,marker='unk',remove_veog = True):
 	'''Detecting blinks based on raw eeg data object.'''
-	return blinks.Blinks(raw,pre,post,thres,min_dist,plot)
+	return blinks.Blinks(raw,pre,post,thres,min_dist,plot,marker = marker,remove_veog =remove_veog)
 
 def load_blinks(block = None):
 	'''Loading pickle blink file.'''
