@@ -5,7 +5,10 @@ the module is used by the experiment class
 '''
 import mne
 import pandas as pd
+import path
+import preprocessing
 import ort
+import os
 import utils
 
 class block:
@@ -55,7 +58,8 @@ class block:
 		m += 'nwords\t\t\t'+str(self.nwords) + '\n'
 		m += 'nsentences\t\t'+str(self.nsentences) + '\n'
 		m += 'eeg loaded\t\t'+str(self.eeg_loaded) + '\n'
-		m += self.blinks.__str__()
+		if hasattr(self,'blinks'):
+			m += self.blinks.__str__()
 		return m
 
 
@@ -118,19 +122,29 @@ class block:
 	def load_eeg_data(self):
 		'''Load eeg data corresponding to this block.'''
 		self.raw = preprocessing.load_block(self)
-		self.eeg_loaded = True
+		if self.raw != 0: 
+			self.eeg_loaded = True
+		else:
+			print('could not load raw')
+
 
 	def load_blinks(self):
-		fn = path.blinks + block.vmrk.vmrk_fn.split('/')[-1].replace('.vmrk','.blinks')
+		fn = path.blinks + self.vmrk.vmrk_fn.split('/')[-1].strip('.vmrk') + '_' + str(self.marker) + '.blinks'
+		print('looking for:',fn)
 		if not os.path.isfile(fn):
 			print('File does not excist, loading eeg data')
 			self.load_eeg_data()
 			self.detect_blinks()
-		self.blinks = preprocessing.load_blinks(self) 
+		else: self.blinks = preprocessing.load_blinks(self) 
 
-	def detect_blinks(self):
-		self.blinks = preprocess.detect_blinks(self.raw)
-		
+
+	def detect_blinks(self,remove_veog = True):
+		if not self.eeg_loaded:
+			self.load_eeg_data()
+		if self.raw != 0:
+			self.blinks = preprocessing.detect_blinks(self.raw,marker=self.marker,remove_veog = remove_veog)
+		else:
+			print('cannot detect blinks because raw could not be loaded')
 		
 
 	def load_orts(self):
