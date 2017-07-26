@@ -134,11 +134,14 @@ class vmrk:
 		if self.n_eeg_recordings == 1:
 			events = self.events.tolist() 
 			self.marker2samplen = dict([[l[2],l[0]] for l in events])
+			self.marker2vmrk_fn = dict([[l[2],self.vmrk_fn] for l in events])
 		else:
 			self.marker2samplen = {} 
-			for events in self.events:
+			self.marker2vmrk_fn = {}
+			for i,events in enumerate(self.events):
 				events = events.tolist()
 				self.marker2samplen.update( dict([[l[2],l[0]] for l in events]) )
+				self.marker2vmrk_fn.update( dict([[l[2],self.vmrk_fn[i]] for l in events]) )
 				 
 
 	def set_markers(self):
