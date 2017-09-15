@@ -124,15 +124,16 @@ class Blink_model:
 		'''
 		print('Stochastic training... random draw of',self.batch_size,'epochs. Do this',n,'times')
 		for i in range(n):
-			print(i,)
+			# print(i,)
 			start = random.randint(0,len(self.train_x)-self.batch_size)
 			end = start + self.batch_size 
-			print(start,end)
+			# print(start,end)
 			batch_x, batch_y = self.train_x[start:end,:],self.train_y[start:end,:]
 			self.sess.run(self.train_step,feed_dict={self.x:batch_x,self.y_:batch_y})
 
 	def eval(self):
-		'''Print accuracy of the model on held out test set.'''
+		'''Print accuracy of the model on held out test set.
+		Should be extended with precission and recall, maybe split out between pp.'''
 		self.correct_prediction = tf.equal(tf.argmax(self.y,1), tf.argmax(self.y_,1))
 		self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, 'float'))
 		print('accuracy on test set')
@@ -159,4 +160,20 @@ class Blink_model:
 		else: self.predict_data = self.test_x
 		prediction = tf.argmax(self.y,1)
 		return prediction.eval(feed_dict={self.x:self.predict_data},session=self.sess)
+
+	def plot_classes(self,data = None)
+		'''Plot all blinks an non blinks in data seperately according to prediction class.
+		(NOT TESTED)'''
+		if type(data) == np.ndarray: self.predict_data = data
+		else: self.predict_data = self.test_x
+		prediction = self.prediction_class(self,self.predict_data)
+		blinks = prediction == 1
+		non_blinks = prediction == 0
+		plt.figure()
+		plt.plot(self.predict_data[blinks].transpose(),color= 'black',alpha = 0.01, linewidth=0.5)
+		plt.title('Blinks')
+		plt.figure()
+		plt.plot(self.predict_data[non_blinks].transpose(),color= 'black',alpha = 0.01, linewidth=0.5)
+		plt.title('Not Blinks')
+		
 
