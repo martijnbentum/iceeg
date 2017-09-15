@@ -16,6 +16,7 @@ ifadv_awd = ifadv_annot + 'AWD/'
 
 blinks = data + 'BLINKS/'
 plot_blinks = data + 'PLOT_BLINKS/'
+artifacts = data + 'ARTIFACTS/'
 
 video_log = data + 'VIDEO_LOG_EEG/'
 video_data = '/Volumes/BAK4TB/EEG_VIDEO/'
