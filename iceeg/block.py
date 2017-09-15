@@ -92,7 +92,7 @@ class block:
 
 
 	def set_start_end_times(self):
-		print('marker:',self.marker)
+		# print('marker:',self.marker)
 		'''Set start and end sample numbers.
 
 		check whether all markers are present otherwise use audio file duration to calculate
