@@ -70,9 +70,6 @@ class Garbage_collector:
 			bs.threshold_zscore(name)
 		
 
-
-
-
 class Garbage_stats:
 	def __init__(self,block,length = 1,remove_ch= None):
 		self.block = block
@@ -84,6 +81,7 @@ class Garbage_stats:
 		self.set_info()
 		self.set_garbage()
 
+
 	def load_data(self):
 		if not hasattr(self.block,'raw'):
 			self.block.load_eeg_data()
@@ -93,6 +91,7 @@ class Garbage_stats:
 		self.duration_sample = len(self.block.raw)
 		self.raw_ch_names = self.block.raw.ch_names
 		del self.block.raw
+
 
 	def remove_channels(self,channels = []):
 		self.remove_ch += channels
@@ -113,6 +112,7 @@ class Garbage_stats:
 			self.end_snippets = np.delete(self.end_snippets,-2)
 		self.mean_ch = self.data.mean(1)
 
+
 	def set_garbage(self):
 		self.calc_channel_variance()
 		self.calc_channel_correlation()
@@ -121,8 +121,10 @@ class Garbage_stats:
 		self.calc_epoch_deviation()
 		self.calc_epoch_variance()
 
+
 	def calc_channel_variance(self):
 		self.channel_variance = self.data.var(1)
+
 
 	def calc_channel_correlation(self):
 		self.corr_matrix = np.corrcoef(self.data)
@@ -166,6 +168,7 @@ class Garbage_stats:
 		if '_ch' in input_attr:
 			setattr(self,names, [n for i,n in enumerate(self.ch_names) if i in getattr(self,bi)])
 
+
 	def aggregate_garbage(self):
 		self.epoch_all= [self.epamprange_bi,self.epdeviation_bi,self.epvariance_bi]
 		self.epoch_bi = np.concatenate(self.epoch_all)
@@ -174,6 +177,7 @@ class Garbage_stats:
 		self.channel_all = [self.chcorrelation_bi,self.chvariance_bi]
 		self.channel_bi = np.concatenate(self.channel_all)
 		self.bad_ch_names= [n for i,n in enumerate(self.ch_names) if i in self.channel_bi]
+
 
 	def remove_bad_channels(self):
 		self.remove_channels(self.bad_ch_names)
