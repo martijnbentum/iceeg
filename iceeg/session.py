@@ -70,6 +70,7 @@ class Session:
 		m += 'End experiment:\t\t' + str(self.end_exp) + '\n'
 		m += 'Duration:\t\t' + str(self.duration).split(' ')[-1] + '\n'
 		m += 'n words:\t\t' + str(self.nwords) + '\n'
+		m += 'n content words:\t' + str(self.ncontent_words) + '\n'
 		m += 'n blocks:\t\t' + str(self.nblocks) + '\n'
 		m += 'n eeg_recordings:\t' + str(self.n_eeg_recordings) + '\n'
 		m += self.vmrk.__str__()
@@ -90,9 +91,11 @@ class Session:
 		'''Create a block object for each audio file in the experiment.'''
 		self.blocks = []
 		self.nwords = 0
+		self.ncontent_words = 0
 		for i in range(1,self.nblocks+1):
 			self.blocks.append(block.block(self.pp_id,self.exp_type,self.vmrk,self.log,i,self.fid2ort))
 			self.nwords += self.blocks[-1].nwords
+			self.ncontent_words += self.blocks[-1].ncontent_words
 		self.nblocks = len(self.blocks)
 
 	def make_blocks_available(self):

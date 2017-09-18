@@ -196,6 +196,8 @@ class block:
 			# add all words and sentences of the ort object corresponding to fid to the block
 			self.words.extend(self.orts[-1].words)
 			self.sentences.extend(self.orts[-1].sentences)
+			for speaker in self.orts[-1].speakers:
+				self.ncontent_words += speaker.ncontent_words
 		# count number of words in this block
 		self.nwords = len(self.words)
 		self.nsentences= len(self.sentences)
