@@ -4,22 +4,26 @@ import numpy as np
 from scipy import stats
 
 class Garbage_collector:
-	def __init__(self,session,length = 1,remove_ch = None):
+	def __init__(self,session,length = 1,remove_ch = None, bid = 'all'):
 		self.session = session
 		self.length = length
 		self.remove_ch = remove_ch
+		self.bid = [bid] if type(bid) == int else bid
 		self.gather_block_statistics()
 		self.make_blockstats_available()
 		self.set_channel_garbage()
 		self.set_epoch_garbage()
-		for bs in self.bstats: bs.aggregate_garbage()
+		# for bs in self.bstats: bs.aggregate_garbage()
 		
 
 	def gather_block_statistics(self):
 		self.bstats = []
-		for b in self.session.blocks:
-			self.bstats.append(Garbage_stats(b,self.length,self.remove_ch))
-
+		if self.bid == 'all':
+			for b in self.session.blocks:
+				self.bstats.append(Garbage_stats(b,self.length,self.remove_ch))
+		elif type(self.bid) == list:
+			for bid in self.bid:
+				self.bstats.append(Garbage_stats(getattr(self.session,'b' + str(bid)),self.length,self.remove_ch))
 
 	def make_blockstats_available(self):
 		'''make block stats available on object as a property .b1 .b2 .b3 etc.'''
@@ -71,9 +75,10 @@ class Garbage_collector:
 		
 
 class Garbage_stats:
-	def __init__(self,block,length = 1,remove_ch= None):
+	def __init__(self,block,length = 1,remove_ch= None, overlap = False):
 		self.block = block
 		self.length = int(float(length) * 1000)
+		self.overlap = overlap
 		if remove_ch != None and type(remove_ch) == list: self.remove_ch = remove_ch
 		else: self.remove_ch = ['VEOG','HEOG','TP10_RM','STI 014','LM']
 		self.load_data()
@@ -102,14 +107,28 @@ class Garbage_stats:
 
 	def set_info(self):
 		self.marker = self.block.marker
-		self.start_snippets = np.arange(0,self.duration_sample,self.length)
+		if self.overlap:
+			self.start_snippets = np.arange(0,self.duration_sample,int(self.length/2))
+		else:
+			self.start_snippets = np.arange(0,self.duration_sample,self.length)
 		self.end_snippets = self.start_snippets + self.length
 		# last snippet can only last until end data
 		self.end_snippets[-1] = self.duration_sample
-		if self.end_snippets[-1] - self.start_snippets[-1] < 500:
-			# minimum snippet length = 500, maximum = 1499
-			self.start_snippets = np.delete(self.start_snippets,-1)
-			self.end_snippets = np.delete(self.end_snippets,-2)
+		# if self.end_snippets[-1] - self.start_snippets[-1] < self.length:
+			# self.start_snippets = np.delete(self.start_snippets,-1)
+			# self.end_snippets = np.delete(self.end_snippets,-2)
+		# minimum snippet length = should be of length snippet 
+		bad_indices = []
+		for i in range(1,len(self.start_snippets)):
+			index = i *-1
+			print(index)
+			if self.end_snippets[index] - self.start_snippets[index] < self.length:
+				bad_indices.append(index)
+			else: break
+		print(bad_indices,'bi')
+		for i in bad_indices:
+			self.start_snippets = np.delete(self.start_snippets,i)
+			self.end_snippets = np.delete(self.end_snippets,i)
 		self.mean_ch = self.data.mean(1)
 
 
