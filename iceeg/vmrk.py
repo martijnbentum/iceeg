@@ -47,7 +47,7 @@ class vmrk:
 		sometimes 1 EEG session was recorded in multiple file (because of battery failure)
 		'''
 		pp_id = str(self.pp_id)
-		fn = glob.glob(path.data + 'EEG/pp*' + pp_id + '_' \
+		fn = glob.glob(path.eeg + '/pp*' + pp_id + '_' \
 			+ self.exp_type + '*.vmrk')
 		matches = []
 		for f in fn:
