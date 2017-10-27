@@ -7,25 +7,32 @@ class Bad_epoch:
 	Contains info about participant id experiment type block number and start sample of block
 	'''
 		
-	def __init__(self,start_boundary = None,end_boundary = None,annotation = '',color = 'blue', pp_id = None, exp_type = None, block_st_sample = None, bid = None, epoch_id = None, visible = True):
+	def __init__(self,start_boundary = None,end_boundary = None,annotation = 'garbage',coder = 'martijn',color = 'blue', pp_id = None, exp_type = None, block_st_sample = None, bid = None, epoch_id = None, visible = True, correct = 'correct'):
 		'''Information about stretch of eeg data containing artefacts.
 		start_boundary 		boundary object with start sample number of type start
 		end_boundary 		boundary object with end sample number of type end
 		annotation 			label for the type of artefact
 		color 				color of epoch in plot
 		'''
+		self.color_dict = {'heog':'green','jump':'pink','drift':'yellow','alpha':'green','garbage':'blue','movement':'cyan','unk':'red','blink':'magenta','ch-jump':'orange'}
+		self.coder = coder
+		self.visible = visible
 		self.start = start_boundary
 		self.end = end_boundary
 		self.ok = False
 		self.plotted = False
 		self.color = color
-		self.annotation = annotation
-		self.epoch_id = epoch_id
-		self.pp_id, self.exp_type, self.bid, self.block_st_sample = int(pp_id), exp_type, int(bid), int(block_st_sample)
-		self.visible = visible
-		self.redraw = False
-		self.check_boundaries()
 		self.set_info()
+		self.correct = correct
+		self.set_annotation( annotation )
+		self.epoch_id = epoch_id
+		self.check_boundaries()
+		print( (pp_id), exp_type, (bid), (block_st_sample), self.epoch_id)
+		try: self.pp_id, self.exp_type, self.bid, self.block_st_sample = int(pp_id), exp_type, int(bid), int(block_st_sample)
+		except: 
+			self.pp_id, self.exp_type, self.bid, self.block_st_sample = pp_id, exp_type, bid, block_st_sample
+			print('missing id information to identify this bad epoch. If you are annotating, this is bad!')
+		self.redraw = False
 
 	def __str__(self):
 		m = 'Epoch id:\t\t'+str(self.epoch_id) + '\n'
@@ -46,6 +53,14 @@ class Bad_epoch:
 	def __eq__(self,other):
 		if type(other) != Bad_epoch: return False
 		return self.start == other.start and self.end == other.end
+
+	def __lt__(self,other):
+		if hassattr(self,'start') and hasattr(other, 'start'):
+			return self.start < other.start
+
+	def __gt__(self,other):
+		if hasattr(self,'start') and hasattr(other, 'start'):
+			return self.start > other.start
 			
 
 	def __contains__(self,boundary):
@@ -66,6 +81,7 @@ class Bad_epoch:
 
 	def plot(self):
 		'''plot start / end boundary object add transparent color over time window and plot annotation epoch id.'''
+		if not self.visible: return 0
 		if self.start_boundary_ok and not self.start.plotted:
 			self.start.plot()
 		if self.end_boundary_ok and not self.end.plotted:
@@ -137,18 +153,43 @@ class Bad_epoch:
 		'''Set the annotation of the bad epoch.'''	
 		if type(annotation) == str:
 			self.annotation = annotation
+		if annotation in self.color_dict.keys(): self.color = self.color_dict[annotation]
 		self.plot_annotation()
+		self.redraw = True
+
+	def set_correct(self,correct = 'correct'):
+		if  self.correct != correct:
+			self.redraw = True
+		if correct == 'correct':
+			self.correct = 'correct'
+			if self.annotation in self.color_dict.keys(): self.color = self.color_dict[self.annotation]
+			else: print('annotation:',self.annotation,'is not in color dict')
+		elif correct == 'incorrect':
+			self.correct = 'incorrect'
+			self.color = 'grey'
+		else: print('unknown input:',correct,'please specify correct or incorrect')
+		
 
 	def plot_annotation(self):
 		'''Plot the annotation to the plot window.'''
-		center = (self.st_sample + self.et_sample) / 2
 		if self.ok:
+			center = (self.st_sample + self.et_sample) / 2
 			if self.start.visible:
-				plt.annotate(self.annotation,xy=(self.st_sample + 10,1100),color = 'black')
+				plt.annotate(self.annotation,xy=(self.st_sample + 10,1100),color = 'black',fontsize=20)
 				plt.annotate(str(self.epoch_id),xy=(self.st_sample + 100, -50),color = 'black')
+				plt.annotate(str(self.coder),xy=(self.st_sample + 100, -70),color = 'black')
+				if self.correct == 'correct':
+					plt.annotate('V', xy=(self.st_sample, -70), color = 'green',fontsize=20)
+				if self.correct == 'incorrect':
+					plt.annotate('X', xy=(self.st_sample, -70), color = 'red',fontsize=20)
 			elif self.end.visible:
-				plt.annotate(self.annotation,xy=(self.et_sample - 1000,1100),color = 'black')
+				plt.annotate(self.annotation,xy=(self.et_sample - 1000,1100),color = 'black',fontsize =20)
 				plt.annotate(str(self.epoch_id),xy=(self.et_sample - 1000,-50),color = 'black')
+				plt.annotate(str(self.coder),xy=(self.et_sample + 1000, -70),color = 'black')
+				if self.correct == 'correct':
+					plt.annotate('V', xy=(self.et_sample - 50, -70), color = 'green',fontsize=20)
+				if self.correct == 'incorrect':
+					plt.annotate('X', xy=(self.et_sample - 50, -70), color = 'red',fontsize=20)
 		
 
 	def del_boundary(self,boundary):
@@ -169,14 +210,14 @@ class Boundary:
 	'''Object that contains information about the start or end of and bad epoch and provides methods to plot and
 	check whether it should be plotted.'''
 
-	def __init__(self,x,boundary_type):
+	def __init__(self,x,boundary_type,visible = True):
 		''' Create boudnary object with time point and type to specify whether it is an end or start.
 		x 				time point
 		boundary_type 	str start or end to indicate type of boundary
 		'''
 		self.x = int(round(x))
 		self.boundary_type = boundary_type
-		self.visible = True
+		self.visible = visible
 		self.plotted = False
 		self.plot()
 
@@ -190,6 +231,16 @@ class Boundary:
 		if other == None or type(other) != Boundary: return False
 		return self.x == other.x and self.boundary_type == other.boundary_type
 
+	def __repr__(self):
+		return self.boundary_type + ' ' + str(self.x) 
+
+	def __lt__(self,other):
+		if hasattr(other, 'x'):
+			return self.x < other.x
+
+	def __gt__(self,other):
+		if hasattr(other, 'x'):
+			return self.x > other.x
 
 	def in_plot_epoch(self,start,end):
 		'''checks whether boundary is in current plot window defined by start and end.'''
