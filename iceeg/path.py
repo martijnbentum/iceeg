@@ -1,7 +1,15 @@
+import os
 '''Defines paths to all data dependencies of the module.'''
+if os.path.isdir('/Volumes/storage/'): volume = 'Volumes/storage/'
+elif os.path.isdir('/Users/u050158/storage/'): volume = '/Users/u050158/storage/'
+else: print('please add path to secondary data folder to the path.py file in the iceeg folder.')
 
-data= '/Volumes/storage/EEG_DATA_ifadv_cgn/'
-eeg= data + 'EEG/'
+data= volume + 'EEG_DATA_ifadv_cgn/'
+if os.path.isdir(volume +'EEG'):eeg= volume + 'EEG/'
+elif os.path.isdir('/Volumes/BAK4TB/EEG/'):eeg = '/Volumes/BAK4TB/EEG/'
+elif os.path.isdir('/Volumes/BAK1TB/EEG/'): eeg = '/Volumes/BAK1TB/EEG/'
+else: print('please add path to eeg files to path.py file in the iceeg folder')
+
 log= data + 'LOG_FILES/'
 marker= data + 'MARKER_FILES/'
 cgn_annot = data + 'CGN_ANNOTATION/' 
@@ -17,7 +25,11 @@ ifadv_awd = ifadv_annot + 'AWD/'
 blinks = data + 'BLINKS/'
 plot_blinks = data + 'PLOT_BLINKS/'
 artifacts = data + 'ARTIFACTS/'
+data_stats = data + 'DATA_STATS/'
 
 video_log = data + 'VIDEO_LOG_EEG/'
 video_data = '/Volumes/BAK4TB/EEG_VIDEO/'
 video_frames= '/Volumes/BAK4TB/EEG_VIDEO_FRAMES/'
+
+
+
