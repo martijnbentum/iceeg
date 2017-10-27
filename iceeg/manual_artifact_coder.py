@@ -3,51 +3,85 @@ import copy
 from matplotlib import pyplot as plt
 import numpy as np
 import os
-import pygame
+import path
 from scipy import stats
+import string
+import time
+import xml_handler
 
 class ac:
-	def __init__(self,g,length = 10,decimate = 5,overlap = False,filename = '',load_data = True):
+	def __init__(self,g,length = 10,decimate = 5,overlap = False,coder = 'martijn',filename = '',load_xml = True):
 		'''Interface to easily annotate eeg signal
 		g 			garbage stats object, class defined in garbage_collection.py
 		length 		duration in seconds of an epoch in the interface
 		decimate 	take sample every n samples, speeds up plotting
 		overlap 	whether plot windows should overlap
+		coder 		Name of the coder (if automatic it should be computer)
 		filename 	specify xml file that is loaded for bad_epochs, default is to generate filename based on block info
 		load_data 	surpress previously generated bad_epochs (create new annotation), old versions are moved to OLD 
 					directory in artifacts folder.
 		'''
 
-		self.key_dict = {'a':'alpha','g':'garbage','m':'movement','u':'unk','e':'blink'}
+		self.key_dict = {'h':'heog','d':'drift','a':'alpha','g':'garbage','m':'movement','u':'unk','x':'incorrect','V':'correct','j':'jump','c':'ch-jump'}
+		self.redraw = False
 		self.g = g
 		self.set_info()
-		self.check_filename(filename)
+		self.filename = filename
 		self.length = int(float(length) * 1000)
 		self.decimate = decimate
 		self.e_index = 0
 		self.event_dict = {}
 		self.overlap = overlap
+		self.coder = coder
+		self.boundaries = []
 		self.bad_epochs = []
+		self.last_bad_epoch_id = int(open(path.artifacts +'last_bad_epoch_id').read())
+		self.load_from_xml(filename)
+		self.last_save = time.time()
 		self.make_epoch()
 		self.plot_epoch('all',self.decimate)
-		self.last_bad_epoch_id = 0
+		self.reset_visible()
+		self.handle_plot(True)
 		self.redraw = False
 		self.run()
 
 
-	def check_filename(self,filename):
+	def load_from_xml(self,filename = ''):
 		if os.path.isfile(filename): self.filename = filename
+		elif os.path.isfile(path.artifacts + filename): self.filename = path.artifacts + filename
+		elif os.path.isfile(self.filename): pass
 		else:
 			print('Auto generating filename based on block information.')
-			filename = path.artifacts +'pp' + str(self.pp_id) + '_exp-' + self.exp_type + '_bid' + str(self.bid) + '.xml'
-		elif os.path.isfile(
-		else: print('File',filename,'not found.')
+			self.filename = path.artifacts + self.coder + '_pp' + str(self.pp_id) + '_exp-' + self.exp_type + '_bid-' + str(self.bid) + '.xml'
+		if os.path.isfile(self.filename): 
+			xml = xml_handler.xml_handler(filename = self.filename)
+			self.bad_epochs = xml.xml2bad_epochs()
+			for be in self.bad_epochs:
+				if be.start == None or be.end == None:
+					print(be)
+				else:
+					self.boundaries.append(be.start)
+					self.boundaries.append(be.end)
+
+	def handle_save_xml(self,force_save = False):
+		save_ok = False
+		for be in self.bad_epochs:
+			if be.ok: save_ok = True
+		if save_ok and (time.time() - self.last_save > 60 or force_save == True):
+			print('saving:',self.filename)
+			print('nbad epochs:',len(self.bad_epochs))
+			self.last_save = time.time()
+			xml = xml_handler.xml_handler(self.bad_epochs,self.filename)
+			xml.bad_epochs2xml()
+			xml.write()
 			
 
 	def set_info(self):
 		'''Set experimental info (participant id, experiment type, etc.) to current object.'''
+		self.exp_dict = {'ifadv':1,'o':2,'k':3,1:'ifadv',2:'o',3:'k'}
 		b = self.g.block
 		self.pp_id, self.exp_type, self.bid,self.block_st_sample = b.pp_id, b.exp_type, b.bid, b.st_sample
+		self.exp_id = '9' 
 
 
 	def make_epoch(self):
@@ -88,17 +122,30 @@ class ac:
 			self.redraw_plot()
 
 
+	def handle_epoch_jump(self,n):
+		'''Set plot window to start (1) or end (0) or proportional to number 2 - 9.
+		if there are 100 plot epochs, 1 sets first plot epoch and 5 sets 50th plot epoch'''
+		if n == '0': i = len(self.start_epoch) - 1
+		elif n == '1': i = 0
+		else: i = int(len(self.start_epoch) / 10) * int(n)
+			
+		if not self.e_index == i:
+			self.e_index = i
+			self.reset_visible()
+			self.redraw_plot()
+
+
 	def reset_visible(self):
 		'''Check whether each bad_epoch is visible in the current plot epoch and set flag in the be accordingly.'''
 		for be in self.bad_epochs:
 			be.in_plot_epoch(self.start_epoch[self.e_index],self.end_epoch[self.e_index])
 
 
-	def handle_plot(self):
+	def handle_plot(self,force_redraw = False):
 		'''Check whether something has changed that requires a redraw of the plot window. Peform redraw when necessary.'''
 		self.fig.canvas.draw()
 		self.check_redraw()
-		if self.redraw:
+		if self.redraw or force_redraw:
 			self.redraw_plot()
 			self.redraw = False
 
@@ -119,96 +166,137 @@ class ac:
 		self.plot_epoch('all',decimate = self.decimate)
 
 
-	def find_closest_epoch(self):
-		'''Find the bad epoch that is closest to the current position of the mouse (before and after.'''
-		self.before, self.after = self.length * 2 * 1000, self.length * 2 * 1000
-		self.before_epoch, self.after_epoch = None, None
-		self.before_boundary, self.after_boundary= None, None
-		for be in self.bad_epochs:
-			if be.end != None:
-				if be.end.x - self.event.xdata < 0: 
-					if abs(be.end.x - self.event.xdata) < self.before: 
-						self.before = abs(be.end.x - self.event.xdata)
-						self.before_epoch = be
-						self.before_boundary = be.end
-				else:
-					if abs(be.end.x - self.event.xdata) < self.after: 
-						self.after = abs(be.end.x - self.event.xdata)
-						self.after_epoch = be
-						self.after_boundary = be.end
-			if be.start != None:
-				if be.start.x - self.event.xdata < 0: 
-					if abs(be.start.x - self.event.xdata) < self.before: 
-						self.before = abs(be.start.x - self.event.xdata)
-						self.before_epoch = be
-						self.before_boundary = be.start
-				else:
-					if abs(be.start.x - self.event.xdata) < self.after: 
-						self.after = abs(be.start.x - self.event.xdata)
-						self.after_epoch = be
-						self.after_boundary = be.start
+	def find_before_and_after_boundaries(self):
+		'''aggregate all before and all after boundaries (relative to mouse) 
+		in seperate lists of ascending order (distance from mouse).'''
+		self.boundaries.sort()
+		self.before_boundaries, self.after_boundaries = [] , []
+		for i,b in enumerate(self.boundaries):
+			if b.x < self.event.xdata:
+				self.before_boundaries.append(b)
+			if b.x > self.event.xdata:
+				self.after_boundaries.append(b)
+		self.before_boundaries.reverse()
+			
 
+	def get_bad_epoch(self,boundary):
+		'''return bad epoch that contains this boundary.
+		boundaries should alway be contained in a bad epoch.'''
+		for be in self.bad_epochs:
+			if boundary in be:
+				return be
+
+
+	def find_completion_bad_epoch(self,boundary_type):
+		'''find bad epoch that is closest in time with missing boundary of correct type within 2 plot epochs of mouse.
+		boundary_type 		start or end, specifying boundary type that completes current boundary i.e. if a start 
+							boundary is made an epoch should be searched with only an end boundary'''
+		if boundary_type =='end': boundaries = self.after_boundaries
+		elif boundary_type == 'start': boundaries = self.before_boundaries
+		else: return 0
+		for b in boundaries:
+			if abs(b.x - self.event.xdata) > self.length * 2 * 1000:
+				return False
+			if b.boundary_type == boundary_type:
+				be = self.get_bad_epoch(b)
+				if be == None: return False # getting errors be are none
+				if boundary_type== 'start' and be.end == None: return be
+				if boundary_type== 'end' and be.start== None: return be
+		return False
+		
 
 	def delete_bad_epoch(self,epoch_id):
 		'''Delete a bad_epoch object based on epoch_id.'''
 		index = -1
+		print('deleting epoch')
+		print([epoch_id])
+		print('n bad epochs',len(self.bad_epochs))
 		for i,be in enumerate(self.bad_epochs):
 			if be.epoch_id == epoch_id:
 				index = i
 				break
+		print(i)
 		if index > -1:
-			self.bad_epochs.pop(index)
+			be = self.bad_epochs.pop(index)
+			print('removing following epoch')
+			print(be)
+			print('n bad epochs',len(self.bad_epochs))
+			
+
+	def add_zeros(self,goal_length,number):
+		l = len(str(number))
+		nzeros = goal_length - l
+		if nzeros > 0: return '0' * nzeros + str(number)
+		else: return str(number)
 			
 
 	def make_bad_epoch_id(self):
 		'''Create an unique integer id.'''
 		self.last_bad_epoch_id += 1
+		fout = open(path.artifacts +'last_bad_epoch_id','w')
+		fout.write(str(self.last_bad_epoch_id))
+		fout.close()
 		return self.last_bad_epoch_id
 
 
 	def annotate_bad_epoch(self,annotation = ''):
 		'''Set the label for the bad epoch.'''
+		boundaries = []
 		for be in self.bad_epochs:
 			if be.ok and be.visible and be.in_bad_epoch(self.mousex):
-				print(self.mousex)
-				print(be)
-				print(be.in_bad_epoch(self.mousex))
-				be.set_annotation(annotation)
+				boundaries.extend([be.start,be.end])
+		dist = self.length * 1000 * 2 
+		if len(boundaries) == 0: return 0
+		for b in boundaries:
+			if abs(b.x - self.mousex) < dist:
+				closest = b
+		be = self.get_bad_epoch(closest)	
+		print(self.mousex)
+		print(be)
+		if annotation == 'correct' or annotation == 'incorrect':
+			be.set_correct(annotation)
+		else: be.set_annotation(annotation)
 
 
 	def handle_start(self):
 		'''Create a start boundary, and either add this to closest end boundary or create new epoch.'''
 		boundary = bad_epoch.Boundary(self.event.xdata,'start')
-		if not self.after_epoch == None and self.after_epoch.start == None:
-			self.after_epoch.set_start(boundary)
+		self.boundaries.append(boundary)
+		be = self.find_completion_bad_epoch(boundary_type = 'end')
+		if be:
+			print('combining boundaries')
+			be.set_start(boundary)
 		else:
-			self.bad_epochs.append(bad_epoch.Bad_epoch(start_boundary = boundary, pp_id = m.pp_id, exp_type = m.exp_type, block_st_sample = m.block_st_sample, epoch_id = self.make_epoch_id))
+			print('making new epoch')
+			self.bad_epochs.append(bad_epoch.Bad_epoch(start_boundary = boundary, pp_id = self.pp_id, coder = self.coder,exp_type = self.exp_type, bid = self.bid, block_st_sample = self.block_st_sample, epoch_id = self.make_bad_epoch_id()))
 			
 
 	def handle_end(self):
 		'''Create a end boundary, and either add this to closest start boundary or create new epoch.'''
 		boundary = bad_epoch.Boundary(self.event.xdata,'end')
-		if not self.before_epoch == None and self.before_epoch.end== None:
-			self.before_epoch.set_end(boundary)
+		self.boundaries.append(boundary)
+		be = self.find_completion_bad_epoch(boundary_type = 'start')
+		if be:
+			print('combining boundaries')
+			be.set_end(boundary)
 		else:
-			self.bad_epochs.append(bad_epoch.Bad_epoch(start_boundary = boundary, pp_id = m.pp_id, exp_type = m.exp_type, block_st_sample = m.block_st_sample, epoch_id = self.make_epoch_id))
+			self.bad_epochs.append(bad_epoch.Bad_epoch(end_boundary = boundary, pp_id = self.pp_id, exp_type = self.exp_type, bid = self.bid, block_st_sample = self.block_st_sample, epoch_id = self.make_bad_epoch_id()))
+
 
 	def handle_delete(self):
 		'''Delete boundary that is closest to the mouse cursor but not further than 30 away.'''
-		if self.before < self.after and self.before < 30:
-			self.before_epoch.del_boundary(self.before_boundary)
-			if self.before_epoch.empty: 
-				self.delete_bad_epoch(self.before_epoch.epoch_id)
-				self.before_epoch = None
-				self.redraw = True
-
-		elif self.before > self.after and self.after < 30:
-			self.after_epoch.del_boundary(self.after_boundary)
-			if self.after_epoch.empty: 
-				self.delete_bad_epoch(self.after_epoch.epoch_id)
-				self.after_epoch = None
-				self.redraw = True
-		self.handle_plot
+		before, after = 100, 100
+		if len(self.before_boundaries) > 0: before = abs(self.before_boundaries[0].x - self.mousex)
+		if len(self.after_boundaries) > 0: after =  abs(self.after_boundaries[0].x - self.mousex)
+		if before > 30 and after > 30: return 0
+		if before < after: boundary = self.before_boundaries[0]
+		if before > after: boundary = self.after_boundaries[0]
+		be = self.get_bad_epoch(boundary)
+		self.boundaries.pop(self.boundaries.index(boundary))
+		be.del_boundary(boundary)
+		if be.empty: 
+			self.delete_bad_epoch(be.epoch_id)
+			self.redraw = True
 
 
 	def handle_bad_channel(self):
@@ -228,30 +316,46 @@ class ac:
 		self.event = event
 		if self.event.xdata != None and self.event.ydata != None:
 			print(self.event.xdata, self.event.ydata)
-			self.find_closest_epoch()
-			if self.event.xdata < self.start_epoch[self.e_index]  or self.event.xdata > self.end_epoch[self.e_index]:
-				self.bad_channel()
-			elif self.event.button == 1: # left mouse button
+			# self.find_closest_epoch()
+			self.find_before_and_after_boundaries()
+			# if self.event.xdata < self.start_epoch[self.e_index]  or self.event.xdata > self.end_epoch[self.e_index]:
+				# self.bad_channel()
+			if self.event.button == 1: # left mouse button
 				self.handle_start()
 			elif self.event.button == 2: # scroll wheel
 				self.handle_delete()
 			elif self.event.button == 3: # right mouse button
 				self.handle_end()
 		self.last_event = event
+		self.handle_save_xml()
 		self.handle_plot()
-         
+
 
 	def on_key(self,event):
 		'''Handle a key press event - links to pyplot window event manager.'''
 		self.event_key = event
 		print(event.key)
+		force_save = False
 		if event.key in ['b','n']:
 			self.handle_epoch_switch(event.key)
-		if event.key in ['a','m','g','u']:
+		if event.key in self.key_dict.keys():
 			self.annotate_bad_epoch(self.key_dict[event.key])
+		if event.key == ' ': force_save = True
+		if event.key in string.digits:
+			self.handle_epoch_jump(event.key)
+		if event.key == 'p': self.purge_bad_epochs()
 		self.handle_plot()
+		self.handle_save_xml(force_save)
 		self.last_event_key = event
 
+	def purge_bad_epochs(self):
+		for be in self.bad_epochs:
+			if not be.ok:
+				if be.start: self.boundaries.pop(self.boundaries.index(be.start))
+				elif be.end: self.boundaries.pop(self.boundaries.index(be.end))
+				self.delete_bad_epoch(be.epoch_id)
+		self.find_before_and_after_boundaries()
+				
 
 	def on_motion(self,event):
 		'''Update mouse position.'''
@@ -278,8 +382,12 @@ class ac:
 			self.channels = channels
 
 		#Create figure
-		self.fig, self.ax = plt.subplots(num=None, figsize=(21, 11), dpi=80, facecolor='w', edgecolor='k')
+		# self.fig, self.ax = plt.subplots(num=None, figsize=(21, 11), dpi=80 )
+		self.fig, self.ax = plt.subplots(num=None, figsize=(20, 9), dpi=80 )
 		self.fig.tight_layout()
+		self.fig.patch.set_facecolor('ivory')
+		self.ax.set_facecolor('ivory')
+		self.fig.canvas.set_window_title('pp'+ str(self.pp_id) + '  ' + self.exp_type + ' b' + str(self.bid) + '    nbe' + str(len(self.bad_epochs)))
 
 		#Create handles that connect to the pyplot for mouse clicks, key presses and mouse motion.
 		self.cidm = self.fig.canvas.mpl_connect('button_press_event', self.on_click)
@@ -298,9 +406,14 @@ class ac:
 		offset = 0
 		self.ch_starty = np.zeros(len(self.channel_index))
 		self.ch_endy = np.zeros(len(self.channel_index))
+
+		clist = 'darkblue,brown,c,m,g,crimson'.split(',')
+		ci =0
 		for i in self.channel_index: 
 			# plot a channel
-			plt.plot(yx,y[i,:]+offset,linewidth = 0.8)
+			plt.plot(yx,y[i,:]+offset,linewidth = 0.9,color=clist[ci])
+			ci +=1
+			if ci == len(clist):ci =0
 			# create coordinates for channel names before and after channel plot
 			self.ch_starty[i] = y[i,0] + offset - 10 # subtract 10 to center name in y dimension
 			self.ch_endy[i] = y[i,-1] + offset - 10 # subtract 10 to center name in y dimension
@@ -313,15 +426,14 @@ class ac:
 
 
 		#Plot channel name for each channel in the same color
-		clist = 'b,g,r,m,y,c'.split(',')
 		ci = 0
 		for i,y in enumerate(self.ch_starty):
-			plt.annotate(self.channels[i],xy=(start_index-200,y),color = clist[ci])
+			plt.annotate(self.channels[i],xy=(start_index-250,y),color = clist[ci],fontsize=18)
 			ci += 1
 			if ci == len(clist): ci = 0 
 		ci = 0
 		for i,y in enumerate(self.ch_endy):
-			plt.annotate(self.channels[i],xy=(end_index + 20,y),color=clist[ci])
+			plt.annotate(self.channels[i],xy=(end_index + 20,y),color=clist[ci],fontsize=18)
 			ci += 1
 			if ci == len(clist): ci = 0 
 
@@ -329,6 +441,12 @@ class ac:
 		if show_bad_epoch:
 			for be in self.bad_epochs:
 				be.plot()
+		plt.grid(alpha=0.2,color='tan',lw=2)
+		if self.e_index == len(self.start_epoch) - 1:
+			plt.annotate('END',xy=(self.end_epoch[-1]-400, 1040), color ='red',fontsize=70)
+		elif self.e_index == 0:
+			plt.annotate('START',xy=(self.end_epoch[0]-800, 1065), color ='blue',fontsize=50)
+			
 
 
 
