@@ -108,6 +108,8 @@ def filter_iir(raw,order = 5,freq = [0.05,30],sf = 1000,pass_type = 'bandpass'):
 	- 'iir' will use IIR forward-backward filtering (via filtfilt).
 	- This function will use bandpass filter butterworth order 5 0.05 - 30 Hz
 	- Filtering is done in place
+	- Pad length (number of samples pre post data is calculated automatically
+		however if data is already cropped is it padded with zeros?
 	'''
 	iir_params = dict(order=order, ftype='butter',output = 'sos')
 	iir_params = mne.filter.construct_iir_filter(iir_params, freq,None,sf, \
@@ -121,6 +123,7 @@ def filter_iir(raw,order = 5,freq = [0.05,30],sf = 1000,pass_type = 'bandpass'):
 		raw.filter(iir_params =iir_params,l_freq= freq[0],h_freq=freq[1],method = 'iir')
 	else:
 		raw.filter(iir_params =iir_params,l_freq = None,h_freq=freq,method = 'iir')
+	raw.iir_params = iir_params # add params to raw object unsure if this is a good idea
 	return raw 
 
 def detect_blinks(raw,pre = 200, post = 300,thres = 50, min_dist = 200, plot = False,marker='unk',remove_veog = True):
