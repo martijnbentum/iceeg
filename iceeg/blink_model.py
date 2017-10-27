@@ -1,7 +1,9 @@
 import tensorflow as tf
 import numpy as np
 import path
+from matplotlib import pyplot as plt
 import random
+import sklearn
 
 
 # python version: Python 3.6.0
@@ -138,6 +140,14 @@ class Blink_model:
 		self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, 'float'))
 		print('accuracy on test set')
 		print(self.accuracy.eval(feed_dict={self.x: self.test_x, self.y_: self.test_y},session=self.sess))
+		self.ground_truth = np.array([1 if line[0] == 0 else 0 for line in self.test_y])
+		temp = np.unique(self.ground_truth, return_counts = True)
+		self.n_nonblinks, self.n_blinks = temp[1][0], temp[1][1]
+		predicted = self.prediction_class()
+		self.confusion_matrix = sklearn.metrics.confusion_matrix(self.ground_truth,predicted)
+		self.report = sklearn.metrics.classification_report(self.ground_truth,predicted)
+		print(self.report)
+		
 
 
 	def prediction_perc(self,data = None):
@@ -161,12 +171,12 @@ class Blink_model:
 		prediction = tf.argmax(self.y,1)
 		return prediction.eval(feed_dict={self.x:self.predict_data},session=self.sess)
 
-	def plot_classes(self,data = None)
+	def plot_classes(self,data = None):
 		'''Plot all blinks an non blinks in data seperately according to prediction class.
 		(NOT TESTED)'''
 		if type(data) == np.ndarray: self.predict_data = data
 		else: self.predict_data = self.test_x
-		prediction = self.prediction_class(self,self.predict_data)
+		prediction = self.prediction_class(self.predict_data)
 		blinks = prediction == 1
 		non_blinks = prediction == 0
 		plt.figure()
