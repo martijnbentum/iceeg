@@ -55,7 +55,7 @@ class Bad_epoch:
 		return self.start == other.start and self.end == other.end
 
 	def __lt__(self,other):
-		if hassattr(self,'start') and hasattr(other, 'start'):
+		if hasattr(self,'start') and hasattr(other, 'start'):
 			return self.start < other.start
 
 	def __gt__(self,other):
