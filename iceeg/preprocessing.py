@@ -6,9 +6,8 @@ import peakutils
 
 plt.ion()
 
-def load_block(b):
+def load_block(b, sf= 1000):
 	'''Load eeg data corresponding to 1 block.
-
 	should think about filtering and edge effects
 	'''
 	if b.marker in b.vmrk.marker2vmrk_fn:
@@ -32,8 +31,15 @@ def load_block(b):
 	raw = filter_iir(raw)
 	raw = make_eog_diff(raw)
 
+	if sf != 1000:
+		print('resampling data to a sf of:',sf)
+		raw.resample(sfreq = sf)
+
 	m = mne.channels.read_montage('easycap-M1')
 	raw.set_montage(m)
+
+	
+
 	return raw
 	
 	
