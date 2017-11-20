@@ -73,7 +73,7 @@ class Data_stats:
 		output = Data_stats()
 		self.set_info(output)
 		output.a_coef = copy.deepcopy(self.lpc_coefficients)
-		changedif self.use_autof:
+		if self.use_autof:
 			output.cepstrum_coef = copy.deepcopy(self.cepstrum_coef)
 		output.length = self.length
 		output.duration_sample = self.duration_sample
@@ -235,10 +235,10 @@ def load_data_stats(block = None, fn = None, fo = None):
 	if type(block)== str:
 		fn = copy.copy(block)
 		block = None
-	if block: fn = path.data_stats + block.vmrk.vmrk_fn.split('/')[-1].strip('.vmrk') + '_' + str(block.marker) + '.data_stats' 
+	if block: fn = make_filename(block) 
 	elif fn == None: print('Need filename or block object to load data stats')
 	if not os.path.isfile(fn):
-		print('File does not excist')
+		print('File does not excist',fn)
 		return 0
 	fin = open(fn,'rb')
 	output = pickle.load(fin)
@@ -268,11 +268,12 @@ def compute_overlap(start_a,end_a,start_b, end_b):
 	if overlap = 1, b is equal in length or larger than a and start before or at the same time as a and
 	b end later or ate the same time as a.
 	'''
+	# print(start_a,end_a,start_b,end_b)
 	if end_a < start_a:
 		raise ValueError('first interval is invalid, function assumes increasing intervals',start_a,end_a)
 	if end_b < start_b:
 		raise ValueError('second interval is invalid, function assumes increasing intervals',start_b,end_b)
-	if end_b < start_a or start_b > end_a: return 0 # b is completely before or after a
+	if end_b <= start_a or start_b >= end_a: return 0 # b is completely before or after a
 	elif start_a == start_b and end_a == end_b: return end_a - start_a # a and b are identical
 	elif start_b < start_a: # first statement already removed b cases completely before a
 		if end_b < end_a: return end_b - start_a # b starts before a and ends before end of a	
