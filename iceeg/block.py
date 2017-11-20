@@ -105,23 +105,26 @@ class block:
 			self.st_sample = self.vmrk.marker2samplen[self.marker]
 		if not self.end_marker_missing:
 			self.et_sample = self.vmrk.marker2samplen[self.marker+1]
+			if not self.start_marker_missing and self.et_sample < self.st_sample:
+				self.block_missing = True
 		if not self.block_missing:
 			if self.start_marker_missing:
 				self.st_sample = self.et_sample - self.wav_dur
 			elif self.end_marker_missing:
 				self.et_sample = self.st_sample + self.wav_dur
-			self.duration_sample = self.et_sample - self.st_sample
+			if self.st_sample < 0: self.duration_sample = self.et_sample + self.st_sample
+			else: self.duration_sample = self.et_sample - self.st_sample
 			self.sample_inacc = abs(self.duration_sample - self.wav_dur)
-		else:
+		if self.block_missing:
 			self.st_sample = None
 			self.et_sample = None
 			self.duration_sample = None
 			self.sample_inacc = None
 
 
-	def load_eeg_data(self):
+	def load_eeg_data(self, sf = 1000):
 		'''Load eeg data corresponding to this block.'''
-		self.raw = preprocessing.load_block(self)
+		self.raw = preprocessing.load_block(self, sf = sf)
 		if self.raw != 0: 
 			self.eeg_loaded = True
 		else:
@@ -189,7 +192,8 @@ class block:
 				else:
 					total_fids_offset = 0
 				# set samplenumber for each word
-				w.set_times_as_samples(offset=total_fids_offset + self.st_sample)
+				if not self.block_missing:
+					w.set_times_as_samples(offset=total_fids_offset + self.st_sample)
 			if self.exp_type in ['o','k']:
 				# get the duration of the las wav file
 				last_fid_duration = self.log.fid2dur[fid]
@@ -203,6 +207,8 @@ class block:
 		self.nsentences= len(self.sentences)
 		self.norts = len(self.orts)
 
+	def block2name(self):
+		return 'pp'+str(self.pp_id) + '_exp-' + str(self.exp_type) + '_bid-' + str(self.bid)
 
 
 
