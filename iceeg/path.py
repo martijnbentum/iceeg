@@ -27,9 +27,12 @@ plot_blinks = data + 'PLOT_BLINKS/'
 artifacts = data + 'ARTIFACTS/'
 data_stats = data + 'DATA_STATS/'
 
+eeg100hz = data + 'EEG100hz/'
+
 video_log = data + 'VIDEO_LOG_EEG/'
 video_data = '/Volumes/BAK4TB/EEG_VIDEO/'
 video_frames= '/Volumes/BAK4TB/EEG_VIDEO_FRAMES/'
-
+auto_encoder_data = '/Volumes/BAK4TB/AUTO_ENCODER_DATA/'
+artifact_training_data = '/Volumes/BAK4TB/ARTIFACT_TRAINING_DATA/'
 
 
