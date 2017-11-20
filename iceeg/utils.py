@@ -6,6 +6,7 @@ There are likely many functions now defined on objects that should be here
 Work In Progress
 '''
 
+exptype2int = {'o':1,'k':2,'ifadv':3}
 
 def make_attributes_available(obj, attr_name, attr_values,add_number = True,name_id = '',verbose = False):
 	'''make attribute available on object as a property
