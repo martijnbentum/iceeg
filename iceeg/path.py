@@ -34,5 +34,7 @@ video_data = '/Volumes/BAK4TB/EEG_VIDEO/'
 video_frames= '/Volumes/BAK4TB/EEG_VIDEO_FRAMES/'
 auto_encoder_data = '/Volumes/BAK4TB/AUTO_ENCODER_DATA/'
 artifact_training_data = '/Volumes/BAK4TB/ARTIFACT_TRAINING_DATA/'
+artifact_data_all_pp = '/Volumes/BAK4TB/ARTIFACT_DATA_ALL_PP/'
+models = '/Volumes/BAK4TB/MODELS/'
 
 
