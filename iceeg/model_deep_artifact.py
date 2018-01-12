@@ -200,8 +200,34 @@ def load_model(model_name):
 	ma.sess = tf.Session()
 	ma.saver = tf.train.Saver()
 	ma.saver.restore(ma.sess,model_name)
-	ma.initialize(start_session = False)
+	# ma.initialize()
 	return ma
+
+def predict2onehot(pred):
+	d = np.zeros((pred.shape[0],2))
+	print(d.shape)
+	d[np.where(pred == 0)[0],:] = (1,0)
+	d[np.where(pred == 1)[0],:] = (0,1)
+	return d
+
+def data2prediction(filename,model_object):
+	d = np.load(filename)
+	print('Loaded data with dimensions:',d.shape, 'and filename:',filename)
+	pred = model_object.compute_prediction_class(data= d)
+	output = predict2onehot(pred)
+	clean, artifact = np.sum(output,axis=0)
+	print('Clean segments:',clean,'Artifacts:',artifact)
+	return output
+
+
+def data2prediction_perc(filename,model_object):
+	d = np.load(filename)
+	print('Loaded data with dimensions:',d.shape, 'and filename:',filename)
+	pred = model_object.compute_prediction_perc(data= d)
+	return pred
+	
+
+	
 				
 
 # Helper Functions, taken from the mnist tutorial for CNN: https://www.tensorflow.org/get_started/mnist/pros
@@ -240,7 +266,7 @@ def next_batch(data,info, batch_size):
 	return data[indices,:],info[indices,:]
 
 
-def deepnn(x,nchannels,nsamples,fmap_size = 2048):
+def deepnn(x,nchannels,nsamples,fmap_size = 2400):
 	"""deepnn builds the graph for a deep net for classifying digits.
 	Args:
 		x: an input tensor with the dimensions (N_examples, 784), where 784 is the
