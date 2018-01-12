@@ -1,4 +1,5 @@
 import numpy as np
+import path
 
 '''general functions, not specific to an object
 
@@ -6,7 +7,34 @@ There are likely many functions now defined on objects that should be here
 Work In Progress
 '''
 
+def compute_overlap(start_a,end_a,start_b, end_b):
+	'''compute the percentage b overlaps with a.
+	if overlap = 1, b is equal in length or larger than a and start before or at the same time as a and
+	b end later or ate the same time as a.
+	'''
+	# print(start_a,end_a,start_b,end_b)
+	if end_a < start_a:
+		raise ValueError('first interval is invalid, function assumes increasing intervals',start_a,end_a)
+	if end_b < start_b:
+		raise ValueError('second interval is invalid, function assumes increasing intervals',start_b,end_b)
+	if end_b <= start_a or start_b >= end_a: return 0 # b is completely before or after a
+	elif start_a == start_b and end_a == end_b: return end_a - start_a # a and b are identical
+	elif start_b < start_a: # first statement already removed b cases completely before a
+		if end_b < end_a: return end_b - start_a # b starts before a and ends before end of a	
+		else: return end_a - start_a # b starts before a and ends == or after end of a
+	elif start_b < end_a: # first statement already romve b cases completely after a
+		if end_b > end_a: return end_a - start_b # starts after start of a and ends == or after end of a
+		else: return end_b - start_b  # b starts after start of a and ends before end of a #
+	else:  print('error this case should be impossible')
+
+def load_ch_names():
+	return open(path.data + 'channel_names.txt').read().split('\n')
+
+def load_100hz_numpy_block(name):
+	return np.load(path.eeg100hz + name + '.npy')
+
 exptype2int = {'o':1,'k':2,'ifadv':3}
+annot2int = {'clean':0,'garbage':1,'unk':2,'drift':3,'other':4}
 
 def make_attributes_available(obj, attr_name, attr_values,add_number = True,name_id = '',verbose = False):
 	'''make attribute available on object as a property
