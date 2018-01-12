@@ -21,7 +21,8 @@ class ac:
 		load_data 	surpress previously generated bad_epochs (create new annotation), old versions are moved to OLD 
 					directory in artifacts folder.
 		'''
-
+		self.artifact_index = -1 
+		self.old_epoch_id = ''
 		self.key_dict = {'h':'heog','d':'drift','a':'alpha','g':'garbage','m':'movement','u':'unk','x':'incorrect','V':'correct','j':'jump','c':'ch-jump'}
 		self.redraw = False
 		self.g = g
@@ -311,6 +312,62 @@ class ac:
 				ch_index = i
 
 
+	def find_next_artifact_epoch(self):
+		artifact_names = ['garbage','unk','drift']
+		epoch_index = self.e_index + 1
+		while True:
+			for be in self.bad_epochs:
+				if be.annotation in artifact_names:
+					if self.start_epoch[epoch_index] <= be.start.x <= self.end_epoch[epoch_index]:
+						if be.epoch_id != self.old_epoch_id:
+							self.old_epoch_id = be.epoch_id
+							return epoch_index
+			epoch_index += 1
+			if epoch_index >= len(self.start_epoch):
+				print('full circle LAST BAD EPOCH LAST BAD EPOCH\n'*30)
+				return len(self.start_epoch) - 1
+
+
+	def next_artifact_index(self):
+		artifact_names = ['garbage','unk','drift']
+		self.artifact_indices = [i for i,be in enumerate(self.bad_epochs) if be.annotation in artifact_names]
+		current_index = self.artifact_index
+		while True:
+			self.artifact_index += 1 
+			if self.artifact_index >= len(self.bad_epochs): 
+				self.artifact_index = 0
+				print('full circle LAST BAD EPOCH LAST BAD EPOCH\n'*30)
+				break
+			be = self.bad_epochs[self.artifact_index]
+			if be.annotation in artifact_names:
+				break
+
+	def jump_to_next_artifact(self):
+		new_e_index = self.find_next_artifact_epoch()
+		if self.e_index != new_e_index: 
+			self.e_index = new_e_index
+			self.reset_visible()
+			self.handle_plot(force_redraw = True)
+		else: self.jump_to_next_artifact()
+		
+			
+
+	def jump_to_previous_artifact(self):
+		self.artifact_index -= 1 
+		print('artifact_index:',self.artifact_index, 'going backwards')
+		if self.artifact_index < 0: self.artifact_index = len(self.bad_epochs) 
+		be = self.bad_epochs[self.artifact_index]
+		for index in range(len(self.start_epoch)):
+			if self.start_epoch[index] <= be.start.x <= self.end_epoch[index]:
+				self.e_index = index
+				break
+		self.reset_visible()
+		self.handle_plot(force_redraw = True)
+			
+
+		
+
+
 	def on_click(self,event):
 		'''Handle click event - links to pyplot window event manager.'''
 		self.event = event
@@ -338,12 +395,16 @@ class ac:
 		force_save = False
 		if event.key in ['b','n']:
 			self.handle_epoch_switch(event.key)
+		if event.key == '`':
+			self.jump_to_next_artifact()
+		# if event.key == 'z':
+			# self.jump_to_next_artifact()
 		if event.key in self.key_dict.keys():
 			self.annotate_bad_epoch(self.key_dict[event.key])
 		if event.key == ' ': force_save = True
 		if event.key in string.digits:
 			self.handle_epoch_jump(event.key)
-		if event.key == 'p': self.purge_bad_epochs()
+		if event.key in ['p','z']: self.purge_bad_epochs()
 		self.handle_plot()
 		self.handle_save_xml(force_save)
 		self.last_event_key = event
