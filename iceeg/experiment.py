@@ -50,7 +50,7 @@ class Participant:
 		self.pp_id = pp_id
 		if fid2ort != None: 
 			assert type(fid2ort) == dict
-			print('Beware that if you reuse fid2ort, sample information if overwritten.')
+			print('Beware that if you reuse fid2ort, sample information is overwritten.')
 			self.fid2ort = fid2ort
 		else: self.fid2ort = load_all_ort.load_fid2ort()
 		self.exp_types = ['o','k','ifadv']
