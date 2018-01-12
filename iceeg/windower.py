@@ -15,7 +15,7 @@ import xml_handler
 class Windower:
 	'''Create slices of eeg data based on sample frequency and length of slice in seconds.'''
 
-	def __init__(self,block,nsamples = None,length_seconds = 1.0, window_overlap = True, window_overlap_percentage = 0.9,sf = 1000, file_extension= 'windows', fn_annotation = None):
+	def __init__(self,block,nsamples = None,length_seconds = 1.0, window_overlap = True, window_overlap_percentage = 0.9,sf = 1000, file_extension= 'windows', fn_annotation = None,load_annotation =True):
 		'''Create object to hold window indices of eeg data.
 		
 		block 						block object of an participants of a specific experimental session
@@ -25,16 +25,19 @@ class Windower:
 		window_overlap_percentage 	the percentage of overlap between consecutive windows
 		sf 							sample_frequency
 		'''
+		self.b = block
 		self.pp_id = block.pp_id
 		self.exp_type = block.exp_type
 		self.bid = block.bid
 		self.st_sample = block.st_sample
-		self.fn_annotation = block2fn_annotation(block)
+		self.et_sample = block.et_sample
+		if load_annotation: self.fn_annotation = block2fn_annotation(block)
+		else: self.fn_annotation = 'unk'
 		self.fn_windows = make_filename(block,file_extension)
 		self.name = make_name(block)
 		if nsamples == None: self.nsamples = block.duration_sample
 		else: self.nsamples = nsamples
-		self.annot2int = {'clean':0,'garbage':1,'unk':2,'drift':3,'other':4}
+		self.annot2int = utils.annot2int
 		self.length_seconds = length_seconds
 		self.window_overlap = window_overlap
 		self.window_overlap_percentage = window_overlap_percentage
@@ -106,9 +109,35 @@ class Windower:
 			for i, index in enumerate(indices):
 				self.info_matrix[index,self.annot2int[annotation]] = 1
 				self.info_matrix[index,start_overlap_column + self.annot2int[annotation]] = overlap[i]
+				self.info_matrix[index,-3:] = self.pp_id, self.exptype2int[self.exp_type], self.bid
 		for i,line in enumerate(self.info_matrix):
 			if max(line) == 0:
 				self.info_matrix[i,:] = default 
+
+
+	def make_ca_info_matrix(self, add_pp_info = False):
+		'''Create a np matrix with clean-artifact annotation and the amount of overlap between bad_epoch and a window.
+		Row indices correspond of the info matrix correspond with the row indices of the windowed data
+		Column indices correspond with the clean - artifact - other, the overlap columns are a second set of columns besides this.
+		pp_info is optionally set in the last three columns of the info matrix
+
+		add_pp_info 		sets whether to add id info about the slices
+		'''
+		self.exptype2int = utils.exptype2int
+		snips = self.windows['sf1000']
+		self.annot2int = {'clean':0,'artifact':1,'other':2}
+		self.fn_annotation = block2fn_annotation(self.b, directory = path.artifacts_clean)
+		self.load_annotations(fn_annotation = self.fn_annotation)
+		start_overlap_column = len(self.annot2int)
+		if add_pp_info: self.info_matrix = np.zeros((len(snips.start_snippets),len(self.annot2int)*2 + 3 ))
+		else: self.info_matrix = np.zeros((len(snips.start_snippets),len(self.annot2int)*2 ))
+		for be in self.bad_epochs:
+			annotation = be.annotation if be.annotation in self.annot2int.keys() else 'other'
+			indices,overlap = find_snippet_index_and_overlap_bad_epoch(snips.start_snippets,snips.end_snippets,be)			
+			for i, index in enumerate(indices):
+				self.info_matrix[index,self.annot2int[annotation]] = 1.0
+				self.info_matrix[index,start_overlap_column + self.annot2int[annotation]] = overlap[i]
+				self.info_matrix[index,-3:] = self.pp_id, self.exptype2int[self.exp_type], self.bid
 
 
 class Snippets:
@@ -171,17 +200,19 @@ def make_filename(b,file_extension = ''):
 def make_name(b):
 	return 'pp'+str(b.pp_id) + '_exp-' + b.exp_type + '_bid-' + str(b.bid) 
 
-def find_annotation_file(pp_id,exp_type,bid, coder = 'martijn'):
+def find_annotation_file(pp_id,exp_type,bid, coder = 'martijn',directory = None):
 	'''Check wheter there is a annotation file and return filename if there is.
 	'''
-	f = path.artifacts + coder +'_pp' + str(pp_id) + '_exp-' + exp_type + '_bid-' +str(bid) + '.xml'
+	if directory == None: directory = path.artifacts
+	f = directory + coder +'_pp' + str(pp_id) + '_exp-' + exp_type + '_bid-' +str(bid) + '.xml'
 	if os.path.isfile(f): return f
 	else: 
 		print('file:',f,'not found')
 		return 0
 
-def block2fn_annotation(b, coder = 'martijn'):
-	return find_annotation_file(b.pp_id, b.exp_type,b.bid,coder = coder)
+def block2fn_annotation(b, coder = 'martijn', directory = None):
+	if directory == None: directory = path.artifacts
+	return find_annotation_file(b.pp_id, b.exp_type,b.bid,coder = coder, directory = directory)
 	
 
 def compute_overlap(start_a,end_a,start_b, end_b):
