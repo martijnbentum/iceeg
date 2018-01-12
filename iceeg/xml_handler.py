@@ -33,7 +33,7 @@ class xml_handler:
 				pass
 			be_xml = etree.SubElement(self.artifacts, 'bad_epoch', id = str(be.epoch_id))
 			# set epoch info elements
-			elements = 'st_sample,et_sample,duration,block_st_sample,pp_id,exp_type,bid,color,coder,correct,annotation'.split(',')
+			elements = 'st_sample,et_sample,duration,block_st_sample,block_et_sample,pp_id,exp_type,bid,color,coder,correct,annotation,epoch_ids'.split(',')
 			for e in elements:
 				# print(e)
 				element = etree.SubElement(be_xml, e)
@@ -59,8 +59,12 @@ class xml_handler:
 		else: print('Starting with list of',len(artifacts,' bad epochs'))
 		for be_xml in self.artifacts.iter('bad_epoch'):
 			# fetch subelements
-			element_names = 'st_sample,et_sample,block_st_sample,pp_id,bid,annotation,color,exp_type,coder'.split(',')
-			st_sample,et_sample,block_st_sample,pp_id,bid,annotation,color,exp_type,coder= [ be_xml.find(e).text for e in element_names]
+			element_names = 'st_sample,et_sample,block_st_sample,block_et_sample,pp_id,bid,annotation,color,exp_type,coder,epoch_ids'.split(',')
+			element_values = []
+			for e in element_names:
+				if not be_xml.find(e) == None: element_values.append(be_xml.find(e).text)
+				else: element_values.append('NA')
+			st_sample,et_sample,block_st_sample,block_et_sample,pp_id,bid,annotation,color,exp_type,coder,epoch_ids= element_values
 			if st_sample == 'NA' or et_sample == 'NA':
 				continue
 			epoch_id = be_xml.attrib['id']
@@ -68,7 +72,7 @@ class xml_handler:
 			start = bad_epoch.Boundary(x = int(st_sample),boundary_type='start',visible = False)
 			end = bad_epoch.Boundary(x = int(et_sample),boundary_type='end',visible = False)
 			# create bad epoch
-			be = bad_epoch.Bad_epoch(start_boundary = start, end_boundary = end, annotation = annotation, color = color,pp_id = pp_id, exp_type = exp_type, bid = bid,block_st_sample = block_st_sample,epoch_id = epoch_id, visible = False )
+			be = bad_epoch.Bad_epoch(start_boundary = start, end_boundary = end, annotation = annotation, color = color,pp_id = pp_id, exp_type = exp_type, bid = bid,block_st_sample = block_st_sample,epoch_id = epoch_id, visible = False, epoch_ids = epoch_ids ,block_et_sample = block_et_sample)
 			self.bad_epochs.append(be)
 		print('N bad epoch:',len(self.artifacts),'artifacts')
 		return self.bad_epochs
@@ -80,6 +84,13 @@ class xml_handler:
 		if os.path.isfile(self.filename): 
 			print('moving file:','mv ' + self.filename +  ' ' + path.artifacts + 'OLD/' + self.filename.split('/')[-1].strip('.xml') + '_'+self.date + '_nbad_epochs-'+ str(len(self.bad_epochs)) + '.xml')
 			os.system('mv ' + self.filename +  ' ' + path.artifacts + 'OLD/' + self.filename.split('/')[-1].rstrip('.xml') + '_'+self.date + '_nbad_epochs-'+ str(len(self.bad_epochs)) + '.xml')
-		fout = open(self.filename,'w')
+		self.save(self.filename)
+
+	def save(self, filename):
+		print('saving xml file to:',filename)
+		fout = open(filename,'w')
 		fout.write(etree.tostring(self.artifacts, pretty_print=True).decode())
 		fout.close()
+
+
+	
