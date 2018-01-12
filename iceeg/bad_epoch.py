@@ -7,14 +7,14 @@ class Bad_epoch:
 	Contains info about participant id experiment type block number and start sample of block
 	'''
 		
-	def __init__(self,start_boundary = None,end_boundary = None,annotation = 'garbage',coder = 'martijn',color = 'blue', pp_id = None, exp_type = None, block_st_sample = None, bid = None, epoch_id = None, visible = True, correct = 'correct'):
+	def __init__(self,start_boundary = None,end_boundary = None,annotation = 'garbage',coder = 'martijn',color = 'blue', pp_id = None, exp_type = None, block_st_sample = None, bid = None, epoch_id = None, visible = True, correct = 'correct',perc_clean = -9,epoch_ids = '',block_et_sample = None):
 		'''Information about stretch of eeg data containing artefacts.
 		start_boundary 		boundary object with start sample number of type start
 		end_boundary 		boundary object with end sample number of type end
 		annotation 			label for the type of artefact
 		color 				color of epoch in plot
 		'''
-		self.color_dict = {'heog':'green','jump':'pink','drift':'yellow','alpha':'green','garbage':'blue','movement':'cyan','unk':'red','blink':'magenta','ch-jump':'orange'}
+		self.color_dict = {'heog':'green','jump':'pink','drift':'yellow','alpha':'green','garbage':'blue','movement':'cyan','unk':'red','blink':'magenta','ch-jump':'orange','artifact':'blue','clean':'white'}
 		self.coder = coder
 		self.visible = visible
 		self.start = start_boundary
@@ -24,10 +24,15 @@ class Bad_epoch:
 		self.color = color
 		self.set_info()
 		self.correct = correct
+		self.perc_clean = perc_clean
 		self.set_annotation( annotation )
 		self.epoch_id = epoch_id
 		self.check_boundaries()
-		print( (pp_id), exp_type, (bid), (block_st_sample), self.epoch_id)
+		self.epoch_ids = epoch_ids
+		self.block_et_sample = block_et_sample
+		self.note = ''
+		self.corrector = ''
+		# print( (pp_id), exp_type, (bid), (block_st_sample), self.epoch_id)
 		try: self.pp_id, self.exp_type, self.bid, self.block_st_sample = int(pp_id), exp_type, int(bid), int(block_st_sample)
 		except: 
 			self.pp_id, self.exp_type, self.bid, self.block_st_sample = pp_id, exp_type, bid, block_st_sample
@@ -79,7 +84,7 @@ class Bad_epoch:
 			self.duration = self.et_sample - self.st_sample
 
 
-	def plot(self):
+	def plot(self,plot_annotation = True,plot_correct =True):
 		'''plot start / end boundary object add transparent color over time window and plot annotation epoch id.'''
 		if not self.visible: return 0
 		if self.start_boundary_ok and not self.start.plotted:
@@ -88,7 +93,8 @@ class Bad_epoch:
 			self.end.plot()
 		if self.ok and not self.plotted:
 				plt.axvspan(self.start.x,self.end.x, facecolor = self.color, alpha = 0.1) 
-				self.plot_annotation()
+				if plot_annotation:
+					self.plot_annotation(plot_correct)
 
 
 	def set_complete_replot(self):
@@ -162,15 +168,26 @@ class Bad_epoch:
 			self.redraw = True
 		if correct == 'correct':
 			self.correct = 'correct'
-			if self.annotation in self.color_dict.keys(): self.color = self.color_dict[self.annotation]
-			else: print('annotation:',self.annotation,'is not in color dict')
+			# if self.annotation in self.color_dict.keys(): self.color = self.color_dict[self.annotation]
+			# else: print('annotation:',self.annotation,'is not in color dict')
 		elif correct == 'incorrect':
 			self.correct = 'incorrect'
-			self.color = 'grey'
 		else: print('unknown input:',correct,'please specify correct or incorrect')
+
+	def add_note(self,note):
+		if not hasattr(self,'note'):self.note = ''
+		if self.note  == '':
+			self.note = note
+		else:
+			n = self.note.split(',')
+			n.append(note)
+			self.note = ','.join(n)
+
+	def set_corrector(self,corrector):
+		self.corrector = corrector
 		
 
-	def plot_annotation(self):
+	def plot_annotation(self,plot_correct = True):
 		'''Plot the annotation to the plot window.'''
 		if self.ok:
 			center = (self.st_sample + self.et_sample) / 2
@@ -178,10 +195,11 @@ class Bad_epoch:
 				plt.annotate(self.annotation,xy=(self.st_sample + 10,1100),color = 'black',fontsize=20)
 				plt.annotate(str(self.epoch_id),xy=(self.st_sample + 100, -50),color = 'black')
 				plt.annotate(str(self.coder),xy=(self.st_sample + 100, -70),color = 'black')
-				if self.correct == 'correct':
-					plt.annotate('V', xy=(self.st_sample, -70), color = 'green',fontsize=20)
-				if self.correct == 'incorrect':
-					plt.annotate('X', xy=(self.st_sample, -70), color = 'red',fontsize=20)
+				if plot_correct:
+					if self.correct == 'correct':
+						plt.annotate('V', xy=(self.st_sample, -70), color = 'green',fontsize=20)
+					if self.correct == 'incorrect':
+						plt.annotate('X', xy=(self.st_sample, -70), color = 'red',fontsize=20)
 			elif self.end.visible:
 				plt.annotate(self.annotation,xy=(self.et_sample - 1000,1100),color = 'black',fontsize =20)
 				plt.annotate(str(self.epoch_id),xy=(self.et_sample - 1000,-50),color = 'black')
