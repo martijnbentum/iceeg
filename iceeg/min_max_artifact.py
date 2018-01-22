@@ -77,7 +77,7 @@ def precision_recall(cm):
 	mcc = matthews_correlation_coefficient(cm)
 
 	fpr_0 = cm[1,0]/ (cm[1,0] + cm[1,1])
-	fpr_1 = cm[0,1]/ (cm[0,1] + cm[0,1])
+	fpr_1 = cm[0,1]/ (cm[0,1] + cm[0,0])
 	return recall_0,precision_0,f1_0,recall_1,precision_1,f1_1,mcc,fpr_0,fpr_1
 
 def make_precision_recall_dict(output_dict):
