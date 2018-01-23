@@ -3,8 +3,11 @@ import os
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
 
-bak = '/Volumes/BAK4TB/'
-if os.path.isdir('/Volumes/storage/'): volume = 'Volumes/storage/'
+if os.path.isdir('/Volumes/BAK4TB/'): bak = '/Volumes/BAK4TB/'
+if os.path.isdir('/Volumes/storage/BAK/'): bak = '/Volumes/storage/BAK/'
+
+if os.path.isdir('/Volumes/WINDOW/EEG/'): volume = '/Volumes/WINDOW/'
+elif os.path.isdir('/Volumes/storage/'): volume = '/Volumes/storage/'
 elif os.path.isdir('/Users/u050158/storage/'): volume = '/Users/u050158/storage/'
 elif os.path.isdir('/vol/tensusers/mbentum/'): 
 	volume = '/vol/tensusers/mbentum/'
@@ -47,5 +50,7 @@ artifact_training_data = bak + 'ARTIFACT_TRAINING_DATA/'
 artifact_training_dataraw = bak + 'ARTIFACT_TRAINING_DATARAW/'
 artifact_data_all_pp = bak + 'ARTIFACT_DATA_ALL_PP/'
 model = bak + 'MODELS/'
+model_predictions = data + 'MODEL_PREDICTIONS/'
 
 artifact_cnn_xml = data + 'ARTIFACT_CNN_XML/'
+
