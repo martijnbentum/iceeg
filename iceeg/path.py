@@ -1,6 +1,7 @@
 import os
 '''Defines paths to all data dependencies of the module.'''
 
+bak = ''
 current_directory = os.path.dirname(os.path.abspath(__file__))
 
 if os.path.isdir('/Volumes/BAK4TB/'): bak = '/Volumes/BAK4TB/'
@@ -39,6 +40,7 @@ artifacts = data + 'ARTIFACTS/'
 artifacts_clean = data+ 'ARTIFACTS_CLEAN/'
 snippet_annotation = data + 'SNIPPET_ANNOTATION/'
 data_stats = data + 'DATA_STATS/'
+confusion_matrices = data + 'CONFUSION_MATRICES/'
 
 eeg100hz = data + 'EEG100hz/'
 
@@ -51,6 +53,7 @@ artifact_training_dataraw = bak + 'ARTIFACT_TRAINING_DATARAW/'
 artifact_data_all_pp = bak + 'ARTIFACT_DATA_ALL_PP/'
 model = bak + 'MODELS/'
 model_predictions = data + 'MODEL_PREDICTIONS/'
+cnn_output_data = bak + 'CNN_OUTPUT_DATA/'
 
 artifact_cnn_xml = data + 'ARTIFACT_CNN_XML/'
 
