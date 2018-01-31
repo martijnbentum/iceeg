@@ -1,3 +1,4 @@
+import experiment as e
 import numpy as np
 import path
 
@@ -6,6 +7,37 @@ import path
 There are likely many functions now defined on objects that should be here
 Work In Progress
 '''
+
+def name2pp_id(name):
+	'''Extract pp id from name (windower.make_name(b)).'''
+	return int(name.split('_')[0].strip('pp'))
+
+def name2exp_type(name):
+	'''Extract exp type from name (windower.make_name(b)).'''
+	return name.split('_')[1].strip('exp-')
+
+def name2bid(name):
+	'''Extract block id from name (windower.make_name(b)).'''
+	return int(name.split('_')[2].strip('bid-'))
+
+def name2block(name, fo = None):
+	'''Based on the name made by the windower object, create and return the block object.'''
+	pp_id = name2pp_id(name)
+	exp_type = name2exp_type(name)
+	bid = name2bid(name)
+
+	p = e.Participant(pp_id,fid2ort = fo)
+	p.add_session(exp_type)
+	s = getattr(p,'s'+exp_type)
+	return getattr(s,'b'+str(bid))
+	
+
+def bad_epoch2block(be,fo = None):
+	'''Return block object that correspond to the bad_epoch.'''
+	p = e.Participant(be.pp_id,fid2ort = fo)
+	p.add_session(be.exp_type)
+	s = getattr(p,'s' + be.exp_type)
+	return getattr(s, 'b' + str(be.bid))
 
 def compute_overlap(start_a,end_a,start_b, end_b):
 	'''compute the percentage b overlaps with a.
