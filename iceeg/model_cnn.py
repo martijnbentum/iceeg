@@ -6,8 +6,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import cnn_output_data 
+import copy
+import model_cnn_output
 import numpy as np
 import path
+import progressbar as pb
 import random
 import sklearn.metrics
 import sys
@@ -108,11 +112,14 @@ class model_deep_artifact:
 		the batch size is set in self.nsamples
 
 		ncycles 	number of times to load a batch and train'''
+		bar = pb.ProgressBar()
+		bar(range(ncycles))
 
 		if not hasattr(self.data,'artifact_train'): self.data.load_next_training_part()
 		if not hasattr(self.data,'small_artifact_test'): self.data.load_small_test_set()
 		for i in range(ncycles):
-			print(i,'training')
+			# print(i,'training')
+			bar.update(i)
 			batch = next_batch_ratio(self.data.artifact_train,self.data.clean_train,self.perc_artifact,self.nsamples)
 			if i % 100 == 0:
 				small_test_batch = next_batch_ratio(self.data.small_artifact_test,self.data.small_clean_test,.5,500)
@@ -128,7 +135,7 @@ class model_deep_artifact:
 		print('test accuracy %g' %test_accuracy) 
 
 
-	def eval_test_set(self,load_next_test_part = True, batch_size=800,save = False,identifier = ''):
+	def eval_test_set(self,load_next_test_part = True, batch_size=800,save = False,identifier = '',add_adjustment = False):
 		'''Evaluate a test set, artifact and clean data is loaded and test seperately.
 		the test sets are loaded in the cnn_data object according to 10 fold cross validation, each fold
 		is divided in multiple parts due to data size, one part is loaded per evaluation.
@@ -153,6 +160,21 @@ class model_deep_artifact:
 		temp2 = np.zeros((self.data.clean_test.shape[0]))
 		self.ground_truth = np.concatenate((temp1,temp2))
 
+		if add_adjustment:
+			# DOES NOT MAKE SENSE TO USE ccn_output_model one eval, because it only works on ordered windows
+			self.clean_up()
+			self.predicted_perc = np.concatenate((self.predict_artifacts_perc,self.predict_clean_perc))
+			do = cnn_output_data.cnn_output2data(predicted_perc = self.predicted_perc[:,1])
+			mo = model_cnn_output.load_model(path.cnn_output_data +'cnn_output_model_wl-201_perc-93',do)
+			self.predicted_artifact_adj = mo.compute_prediction_class(data=do.predicted_artifact_data)
+			self.predicted_adj = copy.copy(self.predicted)
+			self.predicted_adj[do.predicted_artifact_indices] = self.predicted_artifact_adj
+			self.confusion_matrix_adj = sklearn.metrics.confusion_matrix(self.ground_truth,self.predicted_adj)
+			self.report_adj = sklearn.metrics.classification_report(self.ground_truth,self.predicted_adj)
+			print('adjusted prediction class report:')
+			print(self.report_adj)
+			mo.clean_up()
+
 		self.confusion_matrix = sklearn.metrics.confusion_matrix(self.ground_truth,self.predicted)
 		self.report = sklearn.metrics.classification_report(self.ground_truth,self.predicted)
 		print(self.report)
@@ -160,7 +182,7 @@ class model_deep_artifact:
 		return True
 
 
-	def predict_block(self,b, batch_size=500, identifier = ''):
+	def predict_block(self,b, batch_size=500, identifier = '', save = True):
 		'''Use currently loaded model to classify epochs of block.
 		The corresponding eeg data is loaded and windowed in the cnn_data object
 		a percentage and class prediction is saved.
@@ -174,10 +196,12 @@ class model_deep_artifact:
 		print('testing block:',name)
 		self.prediction_block_class = self.compute_prediction_class(self.data.d,batch_size)
 		self.prediction_block_perc = self.prediction_perc
-		output_name = path.model_predictions + identifier + '_' + self.filename_model.split('/')[-1] + '_' + name 
-		print('saving predictions to filename:',output_name)
-		np.save(output_name + '_class',self.prediction_block_class)
-		np.save(output_name + '_perc',self.prediction_block_perc)
+		output_name = path.snippet_annotation+ identifier + self.filename_model.split('/')[-1] + '_' + name 
+		if save:
+			print('saving predictions to filename:',output_name)
+			np.save(output_name + '_class',self.prediction_block_class)
+			np.save(output_name + '_perc',self.prediction_block_perc)
+		return self.prediction_block_class, self.prediction_block_perc
 
 
 	def save_evaluation(self, identifier = ''):
@@ -196,6 +220,10 @@ class model_deep_artifact:
 		np.save(eval_name + '_predicted',self.predicted)
 		np.save(eval_name + '_cm',self.confusion_matrix)
 		np.save(cm_name+ '_cm',self.confusion_matrix)
+		if hasattr(self,'predicted_adj'):
+			np.save(eval_name + '_predicted_adj',self.predicted_adj)
+			np.save(eval_name + '_cm_adj',self.confusion_matrix_adj)
+			np.save(cm_name+ '_cm_adj',self.confusion_matrix_adj)
 		
 
 	def compute_prediction_perc(self,data, batch_size = 800):
@@ -206,10 +234,14 @@ class model_deep_artifact:
 		self.predict_data = hamming_data(data)
 		batch_indices = make_consecutive_batch_indices(data.shape[0],batch_size)
 		self.prediction_conv_raw = np.zeros((data.shape[0],2))
-		print('stepping throug data with:',batch_size,'samples in:',int(data.shape[0]/batch_size),'steps')
+		nsteps = int(data.shape[0]/batch_size)
+		bar = pb.ProgressBar()
+		bar(range(nsteps))
+		print('stepping throug data with:',batch_size,'samples in:',nsteps,'steps')
 		i = 0
 		for start_index, end_index in batch_indices:
-			print(i)
+			# print(i)
+			bar.update(i)
 			self.prediction_conv_raw[start_index:end_index,:] = self.y_conv.eval(feed_dict={self.x:self.predict_data[start_index:end_index],self.keep_prob:1.0},session=self.sess)
 			i += 1
 
@@ -255,7 +287,7 @@ class model_deep_artifact:
 	def save_model(self,identifier = ''):
 		'''Load a previously trained model by name and return model object.
 		'''
-		self.make_model_name()
+		self.make_model_name(identifier = identifier)
 		saver = tf.train.Saver()
 		saver.save(self.sess,self.filename_model)
 		# ma.initialize()
@@ -294,21 +326,28 @@ class model_deep_artifact:
 					print('trained on',self.data.part,'parts, stop training.')
 					break
 
-	def handle_eval_all_test_sets(self,start_part =2, identifier= '',batch_size = 800):
+	def handle_eval_all_test_sets(self,start_part =2, identifier= '',batch_size = 800,cpi = 89,add_adjustment = False):
 		'''Test the current model on all test files.
 		start_part 		there are multiple test files (10), typically the first is already tested during training.
 		identifier 		string prepended to the filename to distinguish different test runs
 		batch_size 		number of epochs to test in 1 go, 800 works well with 16gb of RAM
+		cpi 			current part index, assumed to be 90 (trained on all files')
 		'''
 
 		self.data.current_test_part_index = start_part - 2 # the eval_test_set method will load the test set at the next index
+		self.data.current_part_index = cpi
 		print('starting at part',start_part,'setting index to',self.data.current_test_part_index,'the evaluation method will load the file at the next index.')
 		i = 0 
 		while True:
-			loaded = self.eval_test_set(save=True,identifier = identifier,batch_size = batch_size)
+			loaded = self.eval_test_set(save=True,identifier = identifier,batch_size = batch_size,add_adjustment = add_adjustment)
 			if not loaded:
 				print('done with testing,tested:',i,'test_files.')
+				break
 			i +=1
+			if add_adjustment: 
+				filename_model = self.filename_model
+				self.clean_up()
+				self = load_model(filename_model,self.data)
 
 	def block2prediction(self,b):
 		self.data.block2eegdata(b)
