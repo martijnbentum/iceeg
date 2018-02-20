@@ -222,6 +222,11 @@ class Bad_epoch:
 			print('boundary not present in epoch')
 		self.check_boundaries()
 
+	def get_sample_info(self,multiplier =1):
+		self.check_boundaries()
+		if self.ok:
+			return self.start.x * multiplier, self.end.x * multiplier, self.end.x * multiplier - self.start.x * multiplier
+		else: return None
 
 
 class Boundary:
