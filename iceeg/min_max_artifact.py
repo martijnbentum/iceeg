@@ -300,9 +300,18 @@ def load_cm_rep():
 		if i == 1:
 			filenames = glob.glob(path.confusion_matrices + 'evaluation*part-90*npy')
 		else: 
-			filenames = glob.glob(path.confusion_matrices + 'rep-'+str(i)+'_*part-90*npy')
+			filenames = glob.glob(path.confusion_matrices + 'rep-'+str(i)+'_*part-90_tp*npy')
 		cm_dict[str(i)] = sum([np.load(f) for f in filenames])
 	return cm_dict
+
+def load_cm_block_files():
+	cm_dict = {}
+	filenames = glob.glob(path.confusion_matrices + 'rep-3*part-90_*bid*_cm.npy')
+	cm_dict['cm'] = sum([np.load(f) for f in filenames])
+	filenames = glob.glob(path.confusion_matrices + 'rep-3*part-90_*bid*_cm-adj.npy')
+	cm_dict['cm-adj'] = sum([np.load(f) for f in filenames])
+	return cm_dict
+	
 
 
 def load_cm_perc():
@@ -362,3 +371,11 @@ def plot_cm_roc(cm_dict,class_label = 1, mcc_plot = False, plot_id = None, color
 		plt.grid()
 	else:return f
 	return f,fmmc
+
+def cm2pred_true(cm):
+	pred, true = np.zeros(cm[0,0]),np.zeros(cm[0,0])
+	pred, true = np.concatenate((pred,np.ones(cm[1,1]))),np.concatenate((true,np.ones(cm[1,1])))
+
+	pred, true = np.concatenate((pred,np.ones(cm[0,1]))),np.concatenate((true,np.zeros(cm[0,1])))
+	pred, true = np.concatenate((pred,np.zeros(cm[1,0]))),np.concatenate((true,np.ones(cm[1,0])))
+	return pred,true
