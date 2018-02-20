@@ -7,12 +7,14 @@ import path
 from scipy import stats
 import string
 import time
+import utils
+import windower
 import xml_handler
 
 class ac:
-	def __init__(self,g,length = 10,decimate = 5,overlap = False,coder = 'martijn',filename = '',load_xml = True):
+	def __init__(self,b,length = 10,overlap = False,coder = 'martijn',filename = '',load_xml = True,sf = 100, remove_ch= None):
 		'''Interface to easily annotate eeg signal
-		g 			garbage stats object, class defined in garbage_collection.py
+		b 			block object
 		length 		duration in seconds of an epoch in the interface
 		decimate 	take sample every n samples, speeds up plotting
 		overlap 	whether plot windows should overlap
@@ -25,11 +27,13 @@ class ac:
 		self.old_epoch_id = ''
 		self.key_dict = {'h':'heog','d':'drift','a':'alpha','g':'garbage','m':'movement','u':'unk','x':'incorrect','V':'correct','j':'jump','c':'ch-jump'}
 		self.redraw = False
-		self.g = g
+		self.b = b
+		if remove_ch != None and type(remove_ch) == list: self.remove_ch = remove_ch
+		else: self.remove_ch = ['VEOG','HEOG','TP10_RM','STI 014','LM']
+		self.load_eeg()
 		self.set_info()
 		self.filename = filename
-		self.length = int(float(length) * 1000)
-		self.decimate = decimate
+		self.length = int(float(length) * sf)
 		self.e_index = 0
 		self.event_dict = {}
 		self.overlap = overlap
@@ -40,11 +44,23 @@ class ac:
 		self.load_from_xml(filename)
 		self.last_save = time.time()
 		self.make_epoch()
-		self.plot_epoch('all',self.decimate)
+		self.plot_epoch('all')
 		self.reset_visible()
 		self.handle_plot(True)
 		self.redraw = False
 		self.run()
+
+	def load_eeg(self):
+		self.ch_names = utils.load_ch_names()
+		self.block_name = windower.make_name(self.b)
+		self.data = utils.load_100hz_numpy_block(self.block_name) * 10**6
+		self.remove_channels(self.remove_ch)
+
+	def remove_channels(self,channels = []):
+		self.remove_ch += channels
+		self.ch_mask = [n not in self.remove_ch for n in self.ch_names]
+		self.ch_names= [n for n in self.ch_names if not n in self.remove_ch]
+		self.data = self.data[self.ch_mask,:]
 
 
 	def load_from_xml(self,filename = ''):
@@ -56,7 +72,7 @@ class ac:
 			self.filename = path.artifacts + self.coder + '_pp' + str(self.pp_id) + '_exp-' + self.exp_type + '_bid-' + str(self.bid) + '.xml'
 		if os.path.isfile(self.filename): 
 			xml = xml_handler.xml_handler(filename = self.filename)
-			self.bad_epochs = xml.xml2bad_epochs()
+			self.bad_epochs = xml.xml2bad_epochs(multiplier = 0.1)
 			for be in self.bad_epochs:
 				if be.start == None or be.end == None:
 					print(be)
@@ -73,14 +89,14 @@ class ac:
 			print('nbad epochs:',len(self.bad_epochs))
 			self.last_save = time.time()
 			xml = xml_handler.xml_handler(self.bad_epochs,self.filename)
-			xml.bad_epochs2xml()
+			xml.bad_epochs2xml(multiplier = 10)
 			xml.write()
 			
 
 	def set_info(self):
 		'''Set experimental info (participant id, experiment type, etc.) to current object.'''
 		self.exp_dict = {'ifadv':1,'o':2,'k':3,1:'ifadv',2:'o',3:'k'}
-		b = self.g.block
+		b = self.b
 		self.pp_id, self.exp_type, self.bid,self.block_st_sample = b.pp_id, b.exp_type, b.bid, b.st_sample
 		self.exp_id = '9' 
 
@@ -91,12 +107,12 @@ class ac:
 		windows should overlap half of their length.'''
 		if self.overlap:
 			# If overlap is true make it overlap for half of the window
-			self.start_epoch= np.arange(0,self.g.duration_sample,int(self.length/2))
+			self.start_epoch= np.arange(0,self.data.shape[1],int(self.length/2))
 		else:
-			self.start_epoch= np.arange(0,self.g.duration_sample,self.length)
+			self.start_epoch= np.arange(0,self.data.shape[1],self.length)
 		self.end_epoch= self.start_epoch+ self.length
 		# last epoch can only last until end data
-		self.end_epoch[-1] = self.g.duration_sample
+		self.end_epoch[-1] = self.data.shape[1] 
 
 
 	def run(self):
@@ -164,7 +180,7 @@ class ac:
 		plt.close(self.fig)
 		for be in self.bad_epochs:
 			be.set_complete_replot()
-		self.plot_epoch('all',decimate = self.decimate)
+		self.plot_epoch('all')
 
 
 	def find_before_and_after_boundaries(self):
@@ -426,22 +442,22 @@ class ac:
 
 				
 
-	def plot_epoch(self,channels = ['Fz','Cz','Pz'],decimate = 5,offset_value = 40,show_bad_epoch = True):
+	def plot_epoch(self,channels = ['Fz','Cz','Pz'],offset_value = 40,show_bad_epoch = True):
 		'''Plot a window with specified channels of eeg data.
 		channels 		names or indices of eeg channels, can also be all to plot all channels present
-		decimate 		data reduction to increase plotting speed (decimate 5, keep 1 in 5 data points)
 		offset_value 	vertical distance between eeg channels
 		show_bad_epoch 	whether to show the bad epochs for this time window
 		'''
 		if channels == []: channels = 'all'
-		if channels == 'all': channels = self.g.ch_names
+		if channels == 'all': channels = self.ch_names
 		if type(channels[0]) == int: 
 			self.channel_index= copy.deepcopy(channels)
-			self.channels = [g.ch_names[i] for i in channels]
+			self.channels = [self.ch_names[i] for i in channels]
 		else: 
-			self.channel_index = [self.g.ch_names.index(n) for n in channels]
+			self.channel_index = [self.ch_names.index(n) for n in channels]
 			self.channels = channels
 
+		print(len(self.channel_index),len(self.channels),self.data.shape,self.end_epoch[-1])
 		#Create figure
 		# self.fig, self.ax = plt.subplots(num=None, figsize=(21, 11), dpi=80 )
 		self.fig, self.ax = plt.subplots(num=None, figsize=(20, 9), dpi=80 )
@@ -457,12 +473,9 @@ class ac:
 
 
 		# data is lowpass filtered at 30 Hz, nyquist = 60 Hz and sf = 1000, so
-		# decimate should not exceed 15, 10 speeds up plotting nicely
-		if decimate > 15: decimate = 15 
-		# yx = np.arange(0,self.g.data.shape[1],decimate)
 		start_index,end_index = self.start_epoch[self.e_index], self.end_epoch[self.e_index]
-		yx = np.arange(start_index,end_index,decimate)
-		y = self.g.data[:,yx]
+		yx = np.arange(start_index,end_index,1)
+		y = self.data[:,yx]
 			
 		offset = 0
 		self.ch_starty = np.zeros(len(self.channel_index))
@@ -483,13 +496,13 @@ class ac:
 
 		#Set plot dimensions
 		plt.ylim((-80,(len(self.channel_index) + 2) * 40))
-		plt.xlim(start_index -500,start_index + self.length+500)
+		plt.xlim(start_index -50,start_index + self.length+50)
 
 
 		#Plot channel name for each channel in the same color
 		ci = 0
 		for i,y in enumerate(self.ch_starty):
-			plt.annotate(self.channels[i],xy=(start_index-250,y),color = clist[ci],fontsize=18)
+			plt.annotate(self.channels[i],xy=(start_index-30,y),color = clist[ci],fontsize=18)
 			ci += 1
 			if ci == len(clist): ci = 0 
 		ci = 0
