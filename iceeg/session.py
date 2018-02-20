@@ -49,6 +49,7 @@ class Session:
 		print('loading session with:',pp_id,exp_type)
 		self.pp_id = pp_id
 		self.exp_type = exp_type
+		self.experiment_name = utils.exptype2explanation_dict[self.exp_type]
 		self.fid2ort = fid2ort
 		self.log = log.log(self.pp_id,self.exp_type)
 		self.session = self.log.session
@@ -63,7 +64,7 @@ class Session:
 	def __str__(self):
 		m = '\nSESSION OBJECT\n'
 		m += 'Participant number:\t' + str(self.pp_id) + '\n'
-		m += 'Experiment name:\t' + str(self.exp_type) + '\n'
+		m += 'Experiment name:\t' + str(self.exp_type) + ' ' + self.experiment_name + '\n'
 		m += 'Session number: \t' + str(self.session) + '\n'
 		m += 'nblocks:\t\t' + str(self.nblocks) + '\n'
 		m += 'Start experiment:\t' + str(self.start_exp) + '\n'
@@ -76,6 +77,9 @@ class Session:
 		m += self.vmrk.__str__()
 		m += self.log.__str__()
 		return m
+
+	def __repr__(self):
+		return 'session-object:\t' + self.exp_type + ': ' + self.experiment_name + '\tpp ' + str(self.pp_id) + '\tnwords: ' + str(self.nwords)
 
 
 	def set_start_end_times(self):

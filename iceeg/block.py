@@ -28,6 +28,7 @@ class block:
 		'''
 		self.pp_id = pp_id
 		self.exp_type = exp_type
+		self.experiment_name = utils.exptype2explanation_dict[self.exp_type]
 		self.vmrk = vmrk
 		self.log = log
 		self.bid = bid
@@ -61,6 +62,9 @@ class block:
 		if hasattr(self,'blinks'):
 			m += self.blinks.__str__()
 		return m
+
+	def __repr__(self):
+		return 'Block-object:\t' + str(self.bid) + '\tpp ' + str(self.pp_id) + '\t\texp ' + self.exp_type + ' ' +self.experiment_name + '\t\tnwords: ' + str(self.nwords)
 
 
 	def set_info(self):
