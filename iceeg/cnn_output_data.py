@@ -49,23 +49,39 @@ class cnn_output2data:
 		model_n... 	name of the cnn model that preformed the perc artifact predictions
 		predi... 	a 1d np array of perc artifacts from cnn model to be adjusted by the cnn_output_model
 		'''
-		if name == None and list(predicted_perc) != np.ndarray:
+		if name == '' and list(predicted_perc) != np.ndarray:
 			print('provide block_name or predicted_perc artifact')
+		self.handle_annotated_block = False # sets to true when there is a ground truth file present
 		self.name = name
 		self.window_length = window_length
 		self.model_name = model_name
 		self.output_filename = path.cnn_output_data + self.model_name + '_' + self.name
-		if not predicted_perc != np.ndarray:
-			self.load_files()
-			self.handle_block = True
-		else: 
-			self.predicted = predicted_perc
-			self.handle_block = False
+		# set a 1d np array perc artifact cnn_model output file or load data from name corresponding eeg block
+		if predicted_perc != np.ndarray: self.load_files()
+		else: self.predicted = predicted_perc
+
 		self.nrows = self.predicted.shape[0]
 		self.make_indices()
 		self.pad_predicted()
 		self.predicted2data()
 		self.select_predicted_artifact_info()
+
+
+	def __str__(self):
+		m = 'name:\t\t' + str(self.name) + '\n'
+		m += 'model_name:\t' + str(self.model_name) + '\n'
+		m += 'window_length:\t' + str(self.window_length) + '\n'
+		m += 'output_filename:\t' + str(self.output_filename) + '\n'
+		m += 'nrows:\t' + str(self.nrows) + '\n'
+		m += 'ground_tuth:\t' + str(self.ground_truth_present) + '\n'
+		m += 'n_artifact:\t' + str(self.n_artifact) + '\n'
+		m += 'mcc:\t' + str(self.mcc) + '\n'
+		return m
+
+	def __repr__(self):
+		return self.name + ' ' + str(self.nrows) + ' ' + str(n_artifact) + ' ' + str(self.mcc)
+		
+
 
 	def load_files(self):
 		'''Load ground truth predicted and class files of a block corresponding to the provided name
@@ -75,17 +91,31 @@ class cnn_output2data:
 		self.predicted_filename = path.snippet_annotation + self.model_name + '_' + self.name + '_perc.npy'
 		self.pc_filename = path.snippet_annotation + self.model_name + '_' + self.name + '_class.npy'
 
-		self.ground_truth = np.load(self.ground_truth_filename)
 		self.predicted = np.load(self.predicted_filename)[:,1]
 		self.pc= np.load(self.pc_filename)
 
-		self.confusion_matrix = sklearn.metrics.confusion_matrix(self.ground_truth,self.pc)
-		if self.confusion_matrix.shape == (2,2):
-			r0,p0,f10,r1,p1,f11,mcc,fpr0,fpr1 =mma.precision_recall(self.confusion_matrix)
-			self.f1,self.mcc,self.recall,self.precision,self.fpr = f11,mcc,r1,p1,fpr1
-		else: self.f1,self.mcc,self.recall,self.precision,self.fpr = ['NA']*5
+		if os.path.isfile(self.ground_truth_filename):
+			self.ground_truth_present = 'available'
+			self.handle_annotated_block = True 
+			self.ground_truth = np.load(self.ground_truth_filename)
+			if np.max(self.ground_truth) >1 : 
+				self.confusion_matrix = np.zeros((2,2))
+				self.n_artifact = 'NA'
+			else: 
+				self.confusion_matrix = sklearn.metrics.confusion_matrix(self.ground_truth,self.pc, labels = [0,1])
+				self.n_artifact = sum(self.pc)
+			if self.confusion_matrix.shape == (2,2):
+				r0,p0,f10,r1,p1,f11,mcc,fpr0,fpr1 =mma.precision_recall(self.confusion_matrix)
+				self.f1,self.mcc,self.recall,self.precision,self.fpr = f11,mcc,r1,p1,fpr1
+			else: self.f1,self.mcc,self.recall,self.precision,self.fpr = ['NA']*5
+
+		else: 
+			self.ground_truth_present = 'not available'
+			self.ground_truth = None
+			self.confusion_matrix = None
+			self.f1,self.mcc,self.recall,self.precision,self.fpr = [None]*5
+
 		self.nrows = self.predicted.shape[0]
-		assert self.nrows == self.predicted.shape[0]
 		
 
 	def make_indices(self):
@@ -112,7 +142,7 @@ class cnn_output2data:
 		'''Select the subset that is predicted to be artifact, with a score > 0.5'''
 		self.predicted_artifact_indices = np.where(self.predicted >= .5)[0]
 		self.predicted_artifact_data = self.data[self.predicted_artifact_indices,:]
-		if self.handle_block:
+		if self.handle_annotated_block:
 			self.predicted_artifact_info = self.ground_truth[self.predicted_artifact_indices]
 
 	def save(self):
