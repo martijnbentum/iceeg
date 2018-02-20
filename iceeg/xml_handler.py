@@ -5,7 +5,7 @@ import path
 import time
 
 class xml_handler:
-	def __init__(self,bad_epochs = [],filename = ''):
+	def __init__(self,bad_epochs = [],filename = '',multiplier = 1):
 		'''Writes artifact info generated with manual_artifact_coder to xml files
 
 		bad_epochs 	a list of bad_epoch objects, can be empty
@@ -25,7 +25,7 @@ class xml_handler:
 		self.date = time.strftime("%b-%d-%Y-%H-%M-%S", time.localtime(self.cdate))
 
 
-	def bad_epochs2xml(self):
+	def bad_epochs2xml(self, multiplier = 1):
 		'''Adds bad epochs from the m object to the xml tree.'''
 		self.artifacts = etree.Element('artifacts')
 		for be in self.bad_epochs:
@@ -34,10 +34,14 @@ class xml_handler:
 			be_xml = etree.SubElement(self.artifacts, 'bad_epoch', id = str(be.epoch_id))
 			# set epoch info elements
 			elements = 'st_sample,et_sample,duration,block_st_sample,block_et_sample,pp_id,exp_type,bid,color,coder,correct,annotation,epoch_ids'.split(',')
+			sample_info = be.get_sample_info(multiplier = multiplier)
 			for e in elements:
 				# print(e)
 				element = etree.SubElement(be_xml, e)
-				if hasattr(be,e):
+				if e == 'st_sample' and sample_info: element.text = str(sample_info[0])
+				elif e == 'et_sample' and sample_info: element.text = str(sample_info[1])
+				elif e == 'duration' and sample_info: element.text = str(sample_info[2])
+				elif hasattr(be,e):
 					element.text = str(getattr(be,e))
 				else:
 					element.text = 'NA'
@@ -52,7 +56,7 @@ class xml_handler:
 		self.artifacts = etree.fromstring(open(self.filename).read())
 
 
-	def xml2bad_epochs(self,load_data = True):
+	def xml2bad_epochs(self,load_data = True, multiplier = 1):
 		'''Create a list of bad epochs from xml file.'''
 		self.bad_epochs = []
 		if load_data: self.load_xml()
@@ -69,8 +73,9 @@ class xml_handler:
 				continue
 			epoch_id = be_xml.attrib['id']
 			#create start and end boundary
-			start = bad_epoch.Boundary(x = int(st_sample),boundary_type='start',visible = False)
-			end = bad_epoch.Boundary(x = int(et_sample),boundary_type='end',visible = False)
+			print(st_sample,et_sample)
+			start = bad_epoch.Boundary(x = int(int(st_sample) * multiplier),boundary_type='start',visible = False)
+			end = bad_epoch.Boundary(x = int(int(et_sample) * multiplier),boundary_type='end',visible = False)
 			# create bad epoch
 			be = bad_epoch.Bad_epoch(start_boundary = start, end_boundary = end, annotation = annotation, color = color,pp_id = pp_id, exp_type = exp_type, bid = bid,block_st_sample = block_st_sample,epoch_id = epoch_id, visible = False, epoch_ids = epoch_ids ,block_et_sample = block_et_sample)
 			self.bad_epochs.append(be)
