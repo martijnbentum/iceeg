@@ -2,11 +2,12 @@ import copy
 import load_all_ort 
 import session
 import utils
+import windower
 
 class Experiment:
 	'''Experiment object holds all participants of the experiment.'''
 
-	def __init__(self,pp_ids= range(1,49),add_all_pp=False, multi_thread = False):
+	def __init__(self,pp_ids= range(1,49),add_all_pp=False, multi_thread = False, fid2ort = None):
 		'''Load information about participants, linking audio to EEG data.
 
 		Keywords:
@@ -18,25 +19,65 @@ class Experiment:
 		'''
 		self.pp_ids = pp_ids
 		self.pp = []
+		self.sessions = []
+		self.blocks = []
+		self.nwords = 0
+		if add_all_pp:
+			self.add_all_participants(fid2ort = fid2ort)
+
+	def __str__(self):
+		m = 'n participants:\t' + str(len(self.pp)) + '\n'
+		m += 'n words:\t' + str(self.nwords) + '\n'
+		return m
+
+	def __repr__(self):
+		return 'experiment-object:\tn participants ' + str(len(self.pp)) + '\tnwords: ' + str(self.nwords)
 
 
-	def add_all_participants(self):
+	def add_all_participants(self, fid2ort = None):
 		'''Add all 48 participants.'''
 		self.pp= []
 		for pp_id in self.pp_ids:
-			self.add_participant(pp_id = pp_id)
+			self.add_participant(pp_id = pp_id, fid2ort = fid2ort)
 
 
-	def add_participant(self,pp_id = 1):
+	def add_participant(self,pp_id = 1, fid2ort = None):
 		'''Add a participant to the experiment object.
 
-		You can pass a fid2ort dictionary and specify whether it should deepcopy it
-		Copying the fid2ort takes 18 seconds. It is important to use a unique
-		fid2ort for each participant.
+		You can pass a fid2ort dictionary 
+		It is important to use a unique
+		fid2ort for each participant if you want to use accurate timesample data.
 		'''
 		print('adding participant: '+str(pp_id))
-		self.pp.append(Participant(pp_id))
+		self.pp.append(Participant(pp_id, fid2ort = fid2ort))
 		utils.make_attributes_available(self,'pp',[self.pp[-1]],False,str(pp_id))
+
+	def add_all_sessions(self):
+		'''Add all session to each pp object.'''
+		for p in self.pp:
+			p.add_all_sessions()
+			self.sessions.extend(p.sessions)
+			self.blocks.extend(p.blocks)
+		self.calc_nwords()
+
+	def add_session(self, session_name = 'o'):
+		'''Add a session to each pp object.'''
+		for p in self.pp:
+			p.add_session(session_name)
+			self.sessions.extend(p.sessions)
+			self.blocks.extend(p.blocks)
+		self.calc_nwords()
+
+	def calc_nwords(self):
+		self.nwords = 0
+		for p in self.pp:
+			self.nwords += p.nwords
+
+	def all_names(self):
+		self.names = []
+		for b in self.blocks:
+			self.names.append(windower.make_name(b))
+			
 
 	
 
@@ -58,15 +99,29 @@ class Participant:
 		self.nwords = 0
 
 	def __str__(self):
-		pass
+		m = 'pp-id:\t\t' + str(self.pp_id) + '\n'
+		if hasattr(self,'sifadv'):  m += 'sifadv:\t\tavailable\n'
+		else:  m += 'sifadv:\t\tNA\n'
+		if hasattr(self,'sk'):  m += 'sk:\t\tavailable\n'
+		else:  m += 'sk:\t\tNA\n'
+		if hasattr(self,'so'):  m += 'so:\t\tavailable\n'
+		else:  m += 'so:\t\tNA\n'
+		m+= 'nwords:\t\t' + str(self.nwords) + '\n'
+		return m
+
+	def __repr__(self):
+		return 'participant-object:\tpp ' + str(self.pp_id) + '\t\tnwords ' + str(self.nwords)
+		
 
 	def add_all_sessions(self):
 		'''Add all experimental sessions.
 		Each session a participant heard speech from a differen register: 
 		o: Read aloud stories k: News broadcast ifadv: Spontaneous dialogues.'''
 		self.sessions = []
+		self.blocks = []
 		for exp_type in self.exp_types:
 			self.add_session(exp_type = exp_type)
+			self.blocks.extend(self.sessions[-1].blocks)
 	
 	def add_session(self,exp_type = 'o'):
 		'''Add a experimental session to the participant object .'''
