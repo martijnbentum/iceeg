@@ -7,6 +7,8 @@ import block
 import copy
 import glob
 import log
+import mne
+import mne.preprocessing.ica as ica
 import numpy as np
 import pandas as pd
 import path
@@ -47,6 +49,7 @@ class Session:
 		'''
 
 		print('loading session with:',pp_id,exp_type)
+		self.artifact_perc = 0.0
 		self.pp_id = pp_id
 		self.exp_type = exp_type
 		self.experiment_name = utils.exptype2explanation_dict[self.exp_type]
@@ -59,6 +62,7 @@ class Session:
 		self.nblocks = self.log.log['block'].values[-1]
 		self.load_blocks()
 		utils.make_attributes_available(self,'b',self.blocks)
+		self.eeg_loaded = False
 
 
 	def __str__(self):
@@ -74,12 +78,16 @@ class Session:
 		m += 'n content words:\t' + str(self.ncontent_words) + '\n'
 		m += 'n blocks:\t\t' + str(self.nblocks) + '\n'
 		m += 'n eeg_recordings:\t' + str(self.n_eeg_recordings) + '\n'
+		m += 'nartifacts\t\t'+str(self.nartifacts) + '\n'
+		m += 'total dur\t\t'+str(int(self.total_duration)) + '\n'
+		m += 'total artifact dur\t'+str(int(self.total_artifact_duration)) + '\n'
+		m += 'artifact_perc\t\t'+str(round(self.artifact_perc,3)) + '\n'
 		m += self.vmrk.__str__()
 		m += self.log.__str__()
 		return m
 
 	def __repr__(self):
-		return 'session-object:\t' + self.exp_type + ': ' + self.experiment_name + '\tpp ' + str(self.pp_id) + '\tnwords: ' + str(self.nwords)
+		return 'session-object:\t' + self.exp_type + ': ' + self.experiment_name + '\tpp ' + str(self.pp_id) + '\tnwords: ' + str(self.nwords) + '\tartifact perc: ' + str(round(self.artifact_perc,3))
 
 
 	def set_start_end_times(self):
@@ -96,10 +104,20 @@ class Session:
 		self.blocks = []
 		self.nwords = 0
 		self.ncontent_words = 0
+		self.nblinks = 0
+		self.nartifacts,self.total_duration,self.total_artifact_duration = 0,0,0
 		for i in range(1,self.nblocks+1):
 			self.blocks.append(block.block(self.pp_id,self.exp_type,self.vmrk,self.log,i,self.fid2ort))
 			self.nwords += self.blocks[-1].nwords
 			self.ncontent_words += self.blocks[-1].ncontent_words
+			if self.blocks[-1].nblinks != 'NA': self.nblinks += self.blocks[-1].nblinks
+			try:
+				self.nartifacts += self.blocks[-1].nartifacts
+				self.total_duration += self.blocks[-1].duration_sample/1000
+				self.total_artifact_duration += self.blocks[-1].total_artifact_duration
+			except: print('block object has not artifacts.')
+			if self.total_duration == 0: self.artifact_perc = 0
+			else: self.artifact_perc = self.total_artifact_duration / self.total_duration
 		self.nblocks = len(self.blocks)
 
 	def make_blocks_available(self):
@@ -109,6 +127,84 @@ class Session:
 
 
 	def print_block_info(self):
+		'''Print information of each block.'''
 		for b in self.blocks:
 			print(b)
+
+
+	def load_eeg_data(self,freq = [0.05,30]):
+		'''Loads eeg data of each block and concatenates it into self.raw.'''
+		print('Loading all data from session and concatenating into one raw object.')
+		good_indices = []
+		for i,b in enumerate(self.blocks):
+			print(b.bid)
+			b.load_eeg_data(freq=freq)
+			if b.artifacts != 'NA' and b.artifacts != []:
+				b.raw.annotations = mne.Annotations(b.start_artifacts,b.duration_artifacts,'BAD')
+			if b.eeg_loaded: good_indices.append(i)
+		if len(good_indices) == 0: return 0
+		self.n_blocks_loaded = str(len(good_indices))
+		self.raw = self.blocks[good_indices[0]].raw
+		for i in good_indices[1:]:
+			b = self.blocks[i]
+			self.raw.append(b.raw)
+			b.unload_eeg_data()
+		self.eeg_loaded = True
+
+	def unload_eeg_data(self):
+		'''Unload eeg data, deletes self.raw.'''
+		if hasattr(self,'raw'):
+			delattr(self,'raw')
+		self.eeg_loaded = False
+
+
+	def fit_ica(self):
+		'''Fit ica on session object. All block data is loaded and concatenated in self.raw.
+		EEG data is bandpassed filtered on 1-30 Hz, the ica solution can be used on data
+		without or different bandpass filter see:
+		Winkler et al.
+		On the influence of high-pass filtering on ICA-based artifact reduction in EEG-ERP
+		WIP: extend to be able to set ica approach (with or without artifact rejection, filename)
+		'''
+		print('Fitting ica on all session data.')
+		if not self.eeg_loaded: 
+			try:self.load_eeg_data(freq = [1,30])
+			except: return 0
+			if not self.eeg_loaded: return 0
+		self.ica = ica.ICA()
+		self.ica_e = ica.ICA()
+		self.ica.fit(self.raw,reject_by_annotation = False)
+		self.eog_comp, self.eog_scores = self.ica.find_bads_eog(self.raw,reject_by_annotation = False)
+		self.ica.save(path.ica_solutions + 'pp' + str(self.pp_id) +'_exp-'+self.exp_type + '_session_all-data-ica.fif')
+
+		if len(self.raw.annotations) > 0:
+			self.ica_e.fit(self.raw,reject_by_annotation = True)
+			self.eog_comp_e, self.eog_scores_e = self.ica_e.find_bads_eog(self.raw,reject_by_annotation = False)
+			self.ica_e.save(path.ica_solutions + 'pp' + str(self.pp_id) +'_exp-'+self.exp_type + '_session_no-artifact-ica.fif')
+		else: self.eog_comp_e,self.eog_scores_e = self.eog_comp, self.eog_scores
+		
+		self.write_eog()
+
+
+	def write_eog(self):
+		'''Write text file with correlation between eog channels and ic from ica solution.
+		performs ica with and without artifact rejection
+		WIP: assumes that both all_data and artifact rejection is performed, 
+		should be more general.
+		'''
+		if len(self.raw.annotations) == 0: xml_ok = 'xml_absent'
+		else: xml_ok = 'xml_present'
+		eog = ','.join(map(str,self.eog_comp))
+		veog_scores = ','.join([str(self.eog_scores[0][i]) for i in self.eog_comp])
+		heog_scores = ','.join([str(self.eog_scores[1][i]) for i in self.eog_comp])
+
+		eog_e = ','.join(map(str,self.eog_comp_e))
+		veog_scores_e = ','.join([str(self.eog_scores_e[0][i]) for i in self.eog_comp_e])
+		heog_scores_e = ','.join([str(self.eog_scores_e[1][i]) for i in self.eog_comp_e])
+
+		output = '\t'.join([eog,veog_scores,heog_scores,eog_e,veog_scores_e,heog_scores_e,xml_ok,str(self.artifact_perc),self.n_blocks_loaded,str(self.nblinks)])
+		fout = open(path.ica_solutions + 'pp' + str(self.pp_id) + '_exp-'+self.exp_type + '_session_eog.txt','w')
+		fout.write(output)
+		fout.close()
+		
 
