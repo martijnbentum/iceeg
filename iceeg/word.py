@@ -67,6 +67,12 @@ class Word:
 		a.extend(self.print_sample_info(aslist = True))
 		return '\n'.join(a)
 		
+	def __repr__(self):
+		if hasattr(self,'pos'):
+			return self.word.ljust(25) + ' pos: ' + self.pos.pos_simple + '\tdur: ' + str(self.duration) + '\tregister: ' + self.register + '\tok: '+ str(self.usable)
+		else:
+			return self.word.ljust(25) + ' pos: ' + 'NA'+ '\tdur: ' + str(self.duration) + '\tregister: ' + self.register + '\tok: '+ str(self.usable)
+
 
 	def status(self):
 		'''Set word status 
@@ -209,6 +215,10 @@ class Word:
 			m = 'NA, use set_times_as_samples([offset],[baseline],[epoch_dur])'
 			if aslist: return [m]
 			else: return m
+	
+	def set_artifact(self,artifact):
+		self.artifact_id = artifact.epoch_id
+		self.usable = False
 
 
 
