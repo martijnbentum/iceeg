@@ -51,16 +51,16 @@ def select_artifacts(f):
 	artifacts = [be for be in bad_epochs if be.annotation in ['unk','drift','garbage']]
 	return artifacts
 
-def stitch_artifacts(artifacts):
-	'''Create 2d vectors of bad_epoch indices that are less then 500 ms apart.'''
+def stitch_artifacts(artifacts, distance = 500):
+	'''Create 2d vectors of bad_epoch indices that are less then or equal to the distance apart.'''
 	stiches = []
 	for i,be in enumerate(artifacts):
 		if i > len(artifacts)-2: pass
-		elif 0 <= artifacts[i+1].st_sample - be.et_sample <= 500:
-			print(be.start.x,be.end.x)
-			print(artifacts[i+1].start.x, artifacts[i+1].end.x,)
-			print(i)
-			print('-'*8)
+		elif 0 <= artifacts[i+1].st_sample - be.et_sample <= distance:
+			# print(be.start.x,be.end.x)
+			# print(artifacts[i+1].start.x, artifacts[i+1].end.x,)
+			# print(i)
+			# print('-'*8)
 			stiches.append([i,i+1])
 	return stiches
 
@@ -106,7 +106,7 @@ def combine_artifacts(artifacts,stiches):
 		if be.start.x > artifacts[s[1]].start.x: be.start = artifacts[s[1]].start
 		if be.end.x < artifacts[s[1]].end.x: be.end = artifacts[s[1]].end
 		be.set_info()
-		if hasattr(be,'epoch_ids') and getattr(be,'epoch_ids') != 'NA': be.epoch_ids += ',' + ','.join([be.epoch_id for be in artifacts[s[0]:s[1]+1]])
+		if hasattr(be,'epoch_ids') and getattr(be,'epoch_ids') != 'NA': be.epoch_ids += ',' + ','.join([str(be.epoch_id) for be in artifacts[s[0]:s[1]+1]])
 		else: be.epoch_ids = ','.join([be.epoch_id for be in artifacts[s[0]:s[1]+1]])
 		be.annotation = 'artifact'
 		be.color = 'blue'
@@ -168,25 +168,25 @@ def make_new_clean_epoch(ep_id,start,end,be,default):
 	return clean_epoch
 
 
-def add_clean_epochs(artifacts, default,fo = None):
+def add_clean_epochs(artifacts, default,fo = None, minimal_duration = 500):
 	'''Add clean epochs for stretches between bad_epochs.'''
 	artifacts.sort()
 	epochs = []
 	b = bad_epoch2block(artifacts[0],fo)
 	for i, a in enumerate(artifacts):
 		# print(i,'--',a,b.duration_sample,a.et_sample,b.duration_sample-a.et_sample)
-		if i == 0 and a.st_sample >=  500: 
+		if i == 0 and a.st_sample >=  minimal_duration: 
 			# print('add start artifact')
-			ep_id = '0.' + a.epoch_id
-			epochs.append(make_new_clean_epoch(ep_id,0,a.st_sample,a,default))
+			ep_id = '0.' + str(a.epoch_id)
+			epochs.append(make_new_clean_epoch(ep_id,0,a.st_sample-1,a,default))
 		if i != len(artifacts) -1: 
-			ep_id = a.epoch_id + '.' + artifacts[i+1].epoch_id
+			ep_id = str(a.epoch_id) + '.' + str(artifacts[i+1].epoch_id)
 			start = a.et_sample + 1
 			end = artifacts[i+1].st_sample 
 			epochs.append(make_new_clean_epoch(ep_id,start,end,a,default))
-		if i == len(artifacts) -1 and 500 <= b.duration_sample - a.et_sample: 
+		if i == len(artifacts) -1 and minimal_duration <= b.duration_sample - a.et_sample: 
 			# print('add end artifact')
-			ep_id = a.epoch_id + '.0'
+			ep_id = str(a.epoch_id) + '.0'
 			epochs.append(make_new_clean_epoch(ep_id,a.et_sample,b.duration_sample,a,default))
 	# print(artifacts,999999999)
 	artifacts.extend(epochs)
@@ -196,20 +196,20 @@ def add_clean_epochs(artifacts, default,fo = None):
 	return artifacts
 			
 
-def check_artifacts(artifacts,fo,default):
+def check_artifacts(artifacts,fo,default, minimal_duration = 500):
 	for i,be in enumerate(artifacts):
 		if i < len(artifacts) -1:
-			if not 500 <= artifacts[i+1].st_sample - be.et_sample: 
+			if not minimal_duration <= artifacts[i+1].st_sample - be.et_sample: 
 				print(artifacts[i+1].st_sample,be.et_sample)
 				print(be,i)
 				print
 				print(artifacts[i+1])
-			assert 500 <= artifacts[i+1].st_sample - be.et_sample 
-	artifacts = add_clean_epochs(artifacts,default,fo = fo)
+			# assert minimal_duration <= artifacts[i+1].st_sample - be.et_sample 
+	artifacts = add_clean_epochs(artifacts,default,fo = fo, minimal_duration = minimal_duration)
 	for i,be in enumerate(artifacts):
 		if be.annotation == default:
-			if not be.duration >= 500: print(i,be)
-			assert be.duration >= 500
+			if not be.duration >= minimal_duration: print(i,be)
+			# assert be.duration >= 500
 
 
 def load_bad_pp():
