@@ -3,13 +3,18 @@
 block module contains the block class
 the module is used by the experiment class
 '''
+import blinks
 import mne
+import mne.preprocessing.ica as ica
+import numpy as np
 import pandas as pd
 import path
 import preprocessing
 import ort
 import os
 import utils
+import windower
+import xml_cnn
 
 class block:
 	'''The block class aggregates timing information for one audio file in the experiment.'''
@@ -37,6 +42,9 @@ class block:
 		self.load_orts()
 		utils.make_attributes_available(self,'ort',self.orts)
 		self.eeg_loaded = False
+		self.load_blinks()
+		self.load_artifacts()
+		self.exclude_artifact_words()
 
 
 	def __str__(self):
@@ -54,13 +62,15 @@ class block:
 		m += 'wav duration\t\t'+str(self.wav_dur) + '\n'
 		m += 'sample inaccuracy\t' + str(self.sample_inacc) + '\n'
 		m += 'start time\t\t'+str(self.st) + '\n'
-		m += 'end time\t\t\t'+str(self.et) + '\n'
+		m += 'end time\t\t'+str(self.et) + '\n'
 		m += 'duration\t\t'+str(self.duration) + '\n'
 		m += 'nwords\t\t\t'+str(self.nwords) + '\n'
 		m += 'nsentences\t\t'+str(self.nsentences) + '\n'
 		m += 'eeg loaded\t\t'+str(self.eeg_loaded) + '\n'
-		if hasattr(self,'blinks'):
-			m += self.blinks.__str__()
+		m += 'nblinks\t\t\t'+str(self.nblinks) + '\n'
+		m += 'nartifacts\t\t'+str(self.nartifacts) + '\n'
+		m += 'total artifact dur\t'+str(self.total_artifact_duration) + '\n'
+		m += 'artifact_perc\t\t'+str(round(self.artifact_perc,3)) + '\n'
 		return m
 
 	def __repr__(self):
@@ -126,33 +136,124 @@ class block:
 			self.sample_inacc = None
 
 
-	def load_eeg_data(self, sf = 1000):
-		'''Load eeg data corresponding to this block.'''
-		self.raw = preprocessing.load_block(self, sf = sf)
+	def load_eeg_data(self, sf = 1000,freq = [0.05,30]):
+		'''Load eeg data corresponding to this block.
+		sf 		sample frequency, set lower to downsample
+		freq 	the frequency of the iir bandpass filter (see preprocessing.py)
+		'''
+		
+		self.raw = preprocessing.load_block(self, sf = sf,freq = freq)
 		if self.raw != 0: 
 			self.eeg_loaded = True
 		else:
 			print('could not load raw')
 
-
-	def load_blinks(self):
-		fn = path.blinks + self.vmrk.vmrk_fn.split('/')[-1].strip('.vmrk') + '_' + str(self.marker) + '.blinks'
-		print('looking for:',fn)
-		if not os.path.isfile(fn):
-			print('File does not excist, loading eeg data')
-			self.load_eeg_data()
-			self.detect_blinks()
-		else: self.blinks = preprocessing.load_blinks(self) 
+	def unload_eeg_data(self):
+		'''Unload eeg data.'''
+		if hasattr(self,'raw'):
+			delattr(self,'raw')
+		self.eeg_loaded = False
 
 
-	def detect_blinks(self,remove_veog = True):
-		if not self.eeg_loaded:
-			self.load_eeg_data()
-		if self.raw != 0:
-			self.blinks = preprocessing.detect_blinks(self.raw,marker=self.marker,remove_veog = remove_veog)
-		else:
-			print('cannot detect blinks because raw could not be loaded')
+	def load_blinks(self, offset = 1500):
+		'''Load blink sample number as found with automatically classified blink model.'''
+		try:
+			self.blinks_text= open(path.blinks + windower.make_name(self)+ '_blink-model.classification').read()
+			self.blink_peak_sample = np.array([int(line.split('\t')[2]) for line in self.blinks_text.split('\n')])
+			self.nblinks = len(self.blink_peak_sample)
+			self.blink_start = self.blink_peak_sample - offset
+			self.blink_end = self.blink_peak_sample + offset
+		except:
+			print('could not load blinks')
+			self.blinks_text,self.blink_peak_sample,self.nblinks = 'NA','NA','NA'
+			self.blink_start, self.blink_end = 'NA','NA'
+
+
+	def load_artifacts(self):
+		'''Loads automatically generated artifact annotations.
+		WIP: extend to be able to specify which annotation type to load (manual / automatic)
+		'''
+		try:
+			self.xml = xml_cnn.xml_cnn(self)
+			self.xml.load()
+			self.xml.xml2bad_epochs()
+			self.artifacts = [a for a in self.xml.artifacts if a.annotation == 'artifact']
+			self.nartifacts = len(self.artifacts)
+			self.start_artifacts = [a.st_sample/1000 for a in self.artifacts]
+			self.duration_artifacts = [a.duration/1000 for a in self.artifacts]
+			self.total_artifact_duration = sum(self.duration_artifacts)
+			self.artifact_perc = self.total_artifact_duration/(self.duration_sample/1000)
+		except:
+			print('could not load xml cnn, artefacts.')
+			self.artifacts,self.start_artifacts,self.duration_artifacts = 'NA', 'NA','NA'
+			self.total_duration,self.total_artifact_duration,self.artifact_perc, self.nartifacts = 0,0,0,0
+
+
+	def fit_ica(self):
+		'''Fit ica on block object.
+		EEG data is bandpassed filtered on 1-30 Hz, the ica solution can be used on data
+		without or different bandpass filter see:
+		Winkler et al.
+		On the influence of high-pass filtering on ICA-based artifact reduction in EEG-ERP
+		WIP: extend to be able to set ica approach (with or without artifact rejection, filename)
+		'''
+		if not self.eeg_loaded: 
+			try:self.load_eeg_data(freq = [1,30])
+			except: return 0
+		self.ica = ica.ICA()
+		self.ica_e = ica.ICA()
+		if self.artifacts != 'NA':
+			self.raw.annotations = mne.Annotations(self.start_artifacts,self.duration_artifacts,'BAD')
+		self.ica.fit(self.raw,reject_by_annotation = False)
+		self.eog_comp, self.eog_scores = self.ica.find_bads_eog(self.raw,reject_by_annotation = False)
+		self.ica.save(path.ica_solutions + windower.make_name(self) + '_all-data-ica.fif')
+
+		if self.artifacts != 'NA':
+			self.ica_e.fit(self.raw,reject_by_annotation = True)
+			self.eog_comp_e, self.eog_scores_e = self.ica_e.find_bads_eog(self.raw,reject_by_annotation = False)
+			self.ica_e.save(path.ica_solutions + windower.make_name(self) + '_no-artifact-ica.fif')
+		else: self.eog_comp_e,self.eog_scores_e = self.eog_comp, self.eog_scores
 		
+		self.write_eog()
+
+
+	def write_eog(self):
+		'''Write text file with correlation between eog channels and ic from ica solution.
+		performs ica with and without artifact rejection
+		WIP: assumes that both all_data and artifact rejection is performed, 
+		should be more general.
+		'''
+		if self.artifacts == 'NA': xml_ok = 'xml_absent'
+		else: xml_ok = 'xml_present'
+		eog = ','.join(map(str,self.eog_comp))
+		veog_scores = ','.join([str(self.eog_scores[0][i]) for i in self.eog_comp])
+		heog_scores = ','.join([str(self.eog_scores[1][i]) for i in self.eog_comp])
+
+		eog_e = ','.join(map(str,self.eog_comp_e))
+		veog_scores_e = ','.join([str(self.eog_scores_e[0][i]) for i in self.eog_comp_e])
+		heog_scores_e = ','.join([str(self.eog_scores_e[1][i]) for i in self.eog_comp_e])
+
+		output = '\t'.join([eog,veog_scores,heog_scores,eog_e,veog_scores_e,heog_scores_e,xml_ok,str(self.artifact_perc)])
+
+		fout = open(path.ica_solutions + windower.make_name(self) + '_eog.txt','w')
+		fout.write(output)
+		fout.close()
+
+	def exclude_artifact_words(self):
+		'''Set words which overlap with artifact timeframe to usable == False, recounts nwords.
+		sets the artifact id to the word object 
+		WIP: maybe seperate field for artifact usability on the word object
+		'''
+		if self.artifacts == 'NA' or type(self.st_sample) != int: return 0
+		for w in self.words:
+			for a in self.artifacts:
+				o = utils.compute_overlap(w.st_sample - self.st_sample,w.et_sample - self.st_sample,a.st_sample,a.et_sample)
+				if o > 0:
+					w.set_artifact(a)
+					break
+		self.nallwords = self.nwords
+		self.nwords = len([w for w in self.words if w.usable])
+		self.nexcluded = self.nallwords - self.nwords
 
 	def load_orts(self):
 		'''create the ort object for all fids (file id) in the block  
