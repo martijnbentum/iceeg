@@ -42,6 +42,9 @@ class Sentence:
 		a.append('npos_ok:\t'+str(self.npos_ok))
 		return '\n'.join(a)
 
+	def __repr__(self):
+		return self.string_words().ljust(150) + ' dur: ' + str(self.duration) + '\tregister: ' + self.register + '\tok: ' + str(self.ok)
+
 	def set_info(self):
 		self.sid = self.words[0].sid
 		self.fid = self.words[0].fid
