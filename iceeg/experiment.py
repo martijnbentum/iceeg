@@ -73,6 +73,7 @@ class Experiment:
 		for p in self.pp:
 			self.nwords += p.nwords
 
+
 	def all_names(self):
 		self.names = []
 		for b in self.blocks:
@@ -96,21 +97,26 @@ class Participant:
 		else: self.fid2ort = load_all_ort.load_fid2ort()
 		self.exp_types = ['o','k','ifadv']
 		self.sessions = []
-		self.nwords = 0
+		self.nwords, self.nartifacts, self.total_duration, self.total_artifact_duration,self.artifact_perc = 0,0,0,0,0.0
+
 
 	def __str__(self):
-		m = 'pp-id:\t\t' + str(self.pp_id) + '\n'
-		if hasattr(self,'sifadv'):  m += 'sifadv:\t\tavailable\n'
-		else:  m += 'sifadv:\t\tNA\n'
-		if hasattr(self,'sk'):  m += 'sk:\t\tavailable\n'
-		else:  m += 'sk:\t\tNA\n'
-		if hasattr(self,'so'):  m += 'so:\t\tavailable\n'
-		else:  m += 'so:\t\tNA\n'
-		m+= 'nwords:\t\t' + str(self.nwords) + '\n'
+		m = 'pp-id:\t\t\t' + str(self.pp_id) + '\n'
+		if hasattr(self,'sifadv'):  m += 'sifadv:\t\t\tavailable\n'
+		else:  m += 'sifadv:\t\t\tNA\n'
+		if hasattr(self,'sk'):  m += 'sk:\t\t\tavailable\n'
+		else:  m += 'sk:\t\t\tNA\n'
+		if hasattr(self,'so'):  m += 'so:\t\t\tavailable\n'
+		else:  m += 'so:\t\t\tNA\n'
+		m += 'nwords:\t\t\t' + str(self.nwords) + '\n'
+		m += 'nartifacts\t\t'+str(self.nartifacts) + '\n'
+		m += 'total dur\t\t'+str(int(self.total_duration)) + '\n'
+		m += 'total artifact dur\t'+str(int(self.total_artifact_duration)) + '\n'
+		m += 'artifact_perc\t\t'+str(round(self.artifact_perc,3)) + '\n'
 		return m
 
 	def __repr__(self):
-		return 'participant-object:\tpp ' + str(self.pp_id) + '\t\tnwords ' + str(self.nwords)
+		return 'participant-object:\tpp ' + str(self.pp_id) + '\t\tnwords ' + str(self.nwords) + '\tartifact perc: ' + str(round(self.artifact_perc,3))
 		
 
 	def add_all_sessions(self):
@@ -128,6 +134,12 @@ class Participant:
 		self.sessions.append(session.Session(self.pp_id,exp_type,self.fid2ort))
 		utils.make_attributes_available(self,'s',[self.sessions[-1]],False,exp_type)
 		self.nwords += self.sessions[-1].nwords
+		self.nartifacts += self.sessions[-1].nartifacts
+		self.total_duration += self.sessions[-1].total_duration
+		self.total_artifact_duration += self.sessions[-1].total_artifact_duration
+		self.artifact_perc = self.total_artifact_duration / self.total_duration
+		
+		
 			
 
 		
@@ -137,3 +149,4 @@ class Participant:
 		setattr(self,'nrecordings_'+exp_type,nrecord)
 		setattr(self,'nblock_'+exp_type, self.session[-1].nblock)
 '''
+
