@@ -6,9 +6,11 @@ import peakutils
 
 plt.ion()
 
-def load_block(b, sf= 1000):
+def load_block(b, sf= 1000,freq = [0.05,30]):
 	'''Load eeg data corresponding to 1 block.
 	should think about filtering and edge effects
+	sf 		set lower to downsample
+	freq 	set frequencies for bandpas filter, see filter_iir
 	'''
 	if b.marker in b.vmrk.marker2vmrk_fn:
 		vhdr_fn = b.vmrk.marker2vmrk_fn[b.marker].replace('.vmrk','.vhdr')
@@ -28,7 +30,7 @@ def load_block(b, sf= 1000):
 	raw.load_data()
 	
 	raw = rereference(raw)
-	raw = filter_iir(raw)
+	raw = filter_iir(raw,freq = freq)
 	raw = make_eog_diff(raw)
 
 	if sf != 1000:
@@ -37,9 +39,6 @@ def load_block(b, sf= 1000):
 
 	m = mne.channels.read_montage('easycap-M1')
 	raw.set_montage(m)
-
-	
-
 	return raw
 	
 	
@@ -132,12 +131,12 @@ def filter_iir(raw,order = 5,freq = [0.05,30],sf = 1000,pass_type = 'bandpass'):
 	raw.iir_params = iir_params # add params to raw object unsure if this is a good idea
 	return raw 
 
-def detect_blinks(raw,pre = 200, post = 300,thres = 50, min_dist = 200, plot = False,marker='unk',remove_veog = True):
-	'''Detecting blinks based on raw eeg data object.'''
+def make_blinks(raw,pre = 200, post = 300,thres = 50, min_dist = 200, plot = False,marker='unk',remove_veog = True):
+	'''Detecting blinks based on raw eeg data object. OBSOLETE'''
 	return blinks.Blinks(raw,pre,post,thres,min_dist,plot,marker = marker,remove_veog =remove_veog)
 
 def load_blinks(block = None):
-	'''Loading pickle blink file.'''
+	'''Loading pickle blink file. OBSOLETE'''
 	return blinks.Blinks(block = block)
 	
 def plot(df):
