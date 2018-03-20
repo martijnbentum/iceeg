@@ -6,10 +6,12 @@ current_directory = os.path.dirname(os.path.abspath(__file__))
 
 if os.path.isdir('/Volumes/BAK4TB/'): bak = '/Volumes/BAK4TB/'
 if os.path.isdir('/Volumes/storage/BAK/'): bak = '/Volumes/storage/BAK/'
+if os.path.isdir('/Volumes/BAK1TB/'): bak = '/Volumes/BAK1TB/'
 
 if os.path.isdir('/Volumes/WINDOW/EEG/'): volume = '/Volumes/WINDOW/'
 elif os.path.isdir('/Volumes/storage/'): volume = '/Volumes/storage/'
 elif os.path.isdir('/Users/u050158/storage/'): volume = '/Users/u050158/storage/'
+elif os.path.isdir('/Volumes/Fenna/Documents/'): volume = '/Volumes/Fenna/Documents/'
 elif os.path.isdir('/vol/tensusers/mbentum/'): 
 	volume = '/vol/tensusers/mbentum/'
 	bak = '/vol/tensusers/mbentum/BAK/'
@@ -56,4 +58,4 @@ model_predictions = data + 'MODEL_PREDICTIONS/'
 cnn_output_data = bak + 'CNN_OUTPUT_DATA/'
 
 artifact_cnn_xml = data + 'ARTIFACT_CNN_XML/'
-
+ica_solutions = data + 'ICA_SOLUTIONS/'
