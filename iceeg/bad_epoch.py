@@ -54,6 +54,11 @@ class Bad_epoch:
 		m += 'ok:\t\t\t'+str(self.ok)+ '\n'
 		return m
 
+	def __repr__(self):
+		if self.ok: st, et = self.st_sample, self.et_sample
+		else: st, et = 'NA','NA'
+		return 'Bad_epoch-object:\t' + self.annotation.ljust(9)+ '\tstart: '+str(st) + '\tend: '+str(et) + '\tcoder: ' +self.coder + '\tok: ' + str(self.ok)
+			
 
 	def __eq__(self,other):
 		if type(other) != Bad_epoch: return False
@@ -111,6 +116,8 @@ class Bad_epoch:
 			if self.end.x > start and self.end.x < end:
 				self.visible = True
 			if self.start.x < end and self.start.x > start:
+				self.visible = True
+			if self.start.x < start and self.end.x > end:
 				self.visible = True
 			self.start.in_plot_epoch(start,end)
 			self.end.in_plot_epoch(start,end)
