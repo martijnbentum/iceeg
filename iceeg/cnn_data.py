@@ -172,7 +172,8 @@ class cnn_data:
 		self.clean_up()
 		self.d = load_100hz_numpy_block(windower.make_name(b))
 		if b.start_marker_missing or b.end_marker_missing:
-			w = windower.Windower(b,nsamples= self.d.shape[1], sf = 100,window_overlap_percentage = .99)
+			# the eeg data in d has a sf 100, windower expects an sf 1000, the sf parameter adjust the start and end times of snippets, therefore the nsamples needs to be multiplied by 10.
+			w = windower.Windower(b,nsamples= self.d.shape[1] * 10, sf = 100,window_overlap_percentage = .99)
 		else:
 			w = windower.Windower(b,sf = 100,window_overlap_percentage = .99)
 		self.d = remove_channels(self.d)
