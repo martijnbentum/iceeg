@@ -20,7 +20,7 @@ class Blink_model:
 	peakutils package, see blink.py.
 	'''
 
-	def __init__(self,info = None,data = None,train_threshold = 29,gradient_descent_opt = 0.01,batch_size = 100,tf_version = '1.2.1'):
+	def __init__(self,info = None,data = None,train_threshold = 29,gradient_descent_opt = 0.01,batch_size = 100,tf_version = '1.2.1',model_name = 'blink-model',load_data = True):
 		'''Create blink model object
 		
 		info 					np.ndarray with information about participant 
@@ -43,8 +43,12 @@ class Blink_model:
 		self.gradient_descent_opt = gradient_descent_opt
 		self.batch_size = batch_size
 		self.tf_version = tf_version
-		self.load_data()
-		self.initialize()
+		self.model_name = model_name
+		self.make_model_name()
+		self.define_network()
+		if load_data:
+			self.load_data()
+			self.initialize()
 
 	def load_data(self):
 		'''Load data and info, both np.ndarray made with blinks2array.py
@@ -61,20 +65,16 @@ class Blink_model:
 		print('loading data')
 		self.info = np.load(self.info_f)
 		self.data= np.load(self.data_f)
+		self.set_data()
 
-
-	def initialize(self):
-		'''Make all variables for training and testing and set all tensorflow
-		variables.
+	def set_data(self):
+		'''set variables for training testing and eval.
 		cinfo 			info for each epoch that is manually classified
 		coutput 		epoch of each classified blink
 		train_y 		one hot vector (0 index no blink 1 index blink)
 		train_x 		epochs of training set
 		test_y 			one hot vector (0 index no blink 1 index blink)
 		test_x 			epochs of test set
-		tensorflow 		settings taken from: 
-						https://www.tensorflow.org/get_started/mnist/pros
-						(made some adaption before this worked)
 		'''
 		# 1 codes for blink, 0 no blink
 		self.cindex = self.info[:,-1] >= 0 
@@ -106,6 +106,15 @@ class Blink_model:
 		self.train_x = self.coutput[self.train_index,:]
 		self.test_x = self.coutput[self.test_index,:]
 
+
+	def define_network(self):
+		'''Make all variables for training and testing and set all tensorflow
+		variables.
+		tensorflow 		settings taken from: 
+						https://www.tensorflow.org/get_started/mnist/pros
+						(made some adaptions before this worked)
+		'''
+
 		# tensorflow variable setup
 		self.x = tf.placeholder("float", shape=[None, 1000])
 		self.W = tf.Variable(tf.zeros([1000,2]))
@@ -115,6 +124,7 @@ class Blink_model:
 		self.cross_entropy = tf.reduce_mean( tf.nn.softmax_cross_entropy_with_logits(labels=self.y_, logits=self.y))
 		self.train_step = tf.train.GradientDescentOptimizer(self.gradient_descent_opt).minimize(self.cross_entropy)
 
+	def initialize(self):
 		init = tf.global_variables_initializer()
 		self.sess = tf.Session()
 		self.sess.run(init)
@@ -136,6 +146,7 @@ class Blink_model:
 	def eval(self):
 		'''Print accuracy of the model on held out test set.
 		Should be extended with precission and recall, maybe split out between pp.'''
+		if not hasattr(self,'test_x'): self.load_data()
 		self.correct_prediction = tf.equal(tf.argmax(self.y,1), tf.argmax(self.y_,1))
 		self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, 'float'))
 		print('accuracy on test set')
@@ -186,4 +197,34 @@ class Blink_model:
 		plt.plot(self.predict_data[non_blinks].transpose(),color= 'black',alpha = 0.01, linewidth=0.5)
 		plt.title('Not Blinks')
 		
+	def clean_up(self):
+		'''Close tensorflow session and clear graph.
+		this is necessary to clear the namespace of tensorflow and release resources
+		'''
+		self.sess.close()
+		tf.reset_default_graph()
 
+	def save_model(self,identifier = ''):
+		'''Load a previously trained model by name and return model object.
+		'''
+		self.make_model_name(identifier = identifier)
+		saver = tf.train.Saver()
+		saver.save(self.sess,self.filename_model)
+	
+	def make_model_name(self,identifier = ''):
+		self.filename_model = path.data + identifier + self.model_name
+
+
+
+def load_model(model_name = ''):
+	'''Load a previously trained model by name and return model object.
+	'''
+	if model_name == '': model_name = path.data + 'blink-model'
+	print(model_name)
+	m = Blink_model(load_data = False)
+	m.sess = tf.Session()
+	m.saver = tf.train.Saver()
+	m.saver.restore(m.sess,model_name)
+	m.filename_model = model_name
+	# ma.initialize()
+	return m
