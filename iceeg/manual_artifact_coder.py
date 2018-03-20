@@ -12,7 +12,7 @@ import windower
 import xml_handler
 
 class ac:
-	def __init__(self,b,length = 10,overlap = False,coder = 'martijn',filename = '',load_xml = True,sf = 100, remove_ch= None):
+	def __init__(self,b,length = 10,overlap = False,coder = 'martijn',filename = '',load_xml = True,sf = 100, remove_ch= None, show_cnn_pred = False):
 		'''Interface to easily annotate eeg signal
 		b 			block object
 		length 		duration in seconds of an epoch in the interface
@@ -27,6 +27,7 @@ class ac:
 		self.old_epoch_id = ''
 		self.key_dict = {'h':'heog','d':'drift','a':'alpha','g':'garbage','m':'movement','u':'unk','x':'incorrect','V':'correct','j':'jump','c':'ch-jump'}
 		self.redraw = False
+		self.show_cnn_pred = show_cnn_pred
 		self.b = b
 		if remove_ch != None and type(remove_ch) == list: self.remove_ch = remove_ch
 		else: self.remove_ch = ['VEOG','HEOG','TP10_RM','STI 014','LM']
@@ -67,6 +68,10 @@ class ac:
 		if os.path.isfile(filename): self.filename = filename
 		elif os.path.isfile(path.artifacts + filename): self.filename = path.artifacts + filename
 		elif os.path.isfile(self.filename): pass
+		elif self.show_cnn_pred:
+			name = windower.make_name(self.b)
+			fn = glob.glob(path.artifact_cnn_xml + '_' + name + '*')
+			if len(fn) > 0: self.filename = fn[0]
 		else:
 			print('Auto generating filename based on block information.')
 			self.filename = path.artifacts + self.coder + '_pp' + str(self.pp_id) + '_exp-' + self.exp_type + '_bid-' + str(self.bid) + '.xml'
@@ -329,7 +334,7 @@ class ac:
 
 
 	def find_next_artifact_epoch(self):
-		artifact_names = ['garbage','unk','drift']
+		artifact_names = ['garbage','unk','drift','artifact']
 		epoch_index = self.e_index + 1
 		while True:
 			for be in self.bad_epochs:
@@ -457,7 +462,7 @@ class ac:
 			self.channel_index = [self.ch_names.index(n) for n in channels]
 			self.channels = channels
 
-		print(len(self.channel_index),len(self.channels),self.data.shape,self.end_epoch[-1])
+		# print(len(self.channel_index),len(self.channels),self.data.shape,self.end_epoch[-1])
 		#Create figure
 		# self.fig, self.ax = plt.subplots(num=None, figsize=(21, 11), dpi=80 )
 		self.fig, self.ax = plt.subplots(num=None, figsize=(20, 9), dpi=80 )
@@ -520,6 +525,12 @@ class ac:
 			plt.annotate('END',xy=(self.end_epoch[-1]-400, 1040), color ='red',fontsize=70)
 		elif self.e_index == 0:
 			plt.annotate('START',xy=(self.end_epoch[0]-800, 1065), color ='blue',fontsize=50)
+
+		if hasattr(self.b,'blink_peak_sample') and self.b.blink_peak_sample != 'NA':
+			for blink in self.b.blink_peak_sample:
+				if self.end_epoch[self.e_index] > blink/10 > self.start_epoch[self.e_index]:
+					plt.axvline(blink/10,color='blue',linestyle='-',linewidth=1,alpha=0.5)
+		else: print('no blinks')
 			
 
 
