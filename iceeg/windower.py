@@ -15,7 +15,7 @@ import xml_handler
 class Windower:
 	'''Create slices of eeg data based on sample frequency and length of slice in seconds.'''
 
-	def __init__(self,block,nsamples = None,length_seconds = 1.0, window_overlap = True, window_overlap_percentage = 0.9,sf = 1000, file_extension= 'windows', fn_annotation = None,load_annotation =True):
+	def __init__(self,block,nsamples = None,length_seconds = 1.0, window_overlap = True, window_overlap_percentage = 0.99,sf = 1000, file_extension= 'windows', fn_annotation = None,load_annotation =True):
 		'''Create object to hold window indices of eeg data.
 		
 		block 						block object of an participants of a specific experimental session
@@ -53,6 +53,18 @@ class Windower:
 				self.ok = False
 				print(k,self.windows[k].nsnippets, 'Does not have the same number of snippets as original',self.nsnippets)
 	
+	def __str__(self):
+		m = 'name\t\t'+self.name + '\n'
+		m += 'exp_type\t'+utils.exptype2explanation_dict[self.exp_type] +'\n'
+		m += 'windows\t\t'+' '.join(list(self.windows.keys())) +'\n'
+		m += 'overlap\t\t'+ str(self.window_overlap) +'\n'
+		m += 'overlap perc\t'+str(self.window_overlap_percentage)+'\n'
+		m += 'nsnippets\t'+str(self.nsnippets) +'\n'
+		return m
+
+	def __repr__(self):
+		return 'window-object: ' + self.name + '\tnsnippets: ' + str(self.nsnippets) + '\tduration: ' +str(self.b.duration_sample)
+		
 
 	def save_windows(self):
 		'''Save windows object to a pickle file.'''
@@ -207,7 +219,7 @@ def find_annotation_file(pp_id,exp_type,bid, coder = 'martijn',directory = None)
 	f = directory + coder +'_pp' + str(pp_id) + '_exp-' + exp_type + '_bid-' +str(bid) + '.xml'
 	if os.path.isfile(f): return f
 	else: 
-		print('file:',f,'not found')
+		# print('file:',f,'not found')
 		return 0
 
 def block2fn_annotation(b, coder = 'martijn', directory = None):
