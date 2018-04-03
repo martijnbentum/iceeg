@@ -3,7 +3,7 @@ import check_artifact_length as cal
 import copy
 import experiment as e
 from lxml import etree
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 import numpy as np
 import os
 import path
@@ -173,12 +173,6 @@ class xml_cnn:
 			if a.annotation == 'clean':
 				a.perc_clean = ' '.join([str(np.mean(self.pred_perc[index,0])),str(np.std(self.pred_perc[index,0]))])
 		
-	def plot(self):
-		plt.figure()
-		plt.plot(self.pred_class_adj)
-		plt.plot(self.pred_perc[:,0],alpha = .3)
-		plt.plot(self.artifacts_class,linewidth = 5, alpha = .5 )
-		plt.legend(('pred class','pred perc','annot artifacts'))
 
 
 	def bad_epochs2xml(self):
@@ -265,6 +259,14 @@ class xml_cnn:
 				durations.append(a.duration / 1000)
 		return onsets, durations
 				
+'''
+	def plot(self):
+		plt.figure()
+		plt.plot(self.pred_class_adj)
+		plt.plot(self.pred_perc[:,0],alpha = .3)
+		plt.plot(self.artifacts_class,linewidth = 5, alpha = .5 )
+		plt.legend(('pred class','pred perc','annot artifacts'))
+'''
 
 	
 def make_filename(w, model_name):
