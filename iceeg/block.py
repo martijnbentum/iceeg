@@ -42,6 +42,7 @@ class block:
 		self.load_orts()
 		utils.make_attributes_available(self,'ort',self.orts)
 		self.eeg_loaded = False
+		self.nblinks = 'NA'
 		self.load_blinks()
 		self.load_artifacts()
 		self.exclude_artifact_words()
@@ -155,19 +156,63 @@ class block:
 		self.eeg_loaded = False
 
 
-	def load_blinks(self, offset = 1500):
+	def load_blinks(self, offset = 500):
 		'''Load blink sample number as found with automatically classified blink model.'''
 		try:
+			st = self.st_sample
 			self.blinks_text= open(path.blinks + windower.make_name(self)+ '_blink-model.classification').read()
-			self.blink_peak_sample = np.array([int(line.split('\t')[2]) for line in self.blinks_text.split('\n')])
+			self.blink_peak_sample = np.array([int(line.split('\t')[2])-st for line in self.blinks_text.split('\n')])
 			self.nblinks = len(self.blink_peak_sample)
-			self.blink_start = self.blink_peak_sample - offset
-			self.blink_end = self.blink_peak_sample + offset
+			self.blink_start = (self.blink_peak_sample - offset) / 1000
+			self.blink_end = (self.blink_peak_sample + offset) / 1000
+			self.blink_duration= self.blink_end - self.blink_start
+
+			self.blink_start_sample = (self.blink_peak_sample - offset) 
+			self.blink_end_sample = (self.blink_peak_sample + offset) 
+			self.blink_duration_sample= self.blink_end - self.blink_start
+			return True
 		except:
 			print('could not load blinks')
 			self.blinks_text,self.blink_peak_sample,self.nblinks = 'NA','NA','NA'
 			self.blink_start, self.blink_end = 'NA','NA'
+			return False
 
+
+	def zero_blinks(self, d = None,picks = 'eeg'):
+		if not self.eeg_loaded: return False
+		if not self.load_blinks(offset = 500): return False
+		self.annotate_blinks()
+		if type(d) != type(self.raw[:][0]): 
+			if picks == 'eeg': 
+				i = mne.pick_types(self.raw.info,eeg=True)
+				d = self.raw[i,:][0] * 10 ** 6
+			else: d = self.raw[:][0] * 10 ** 6 
+		for start,end in zip(self.blink_start_sample,self.blink_end_sample):
+			if start < 0: start = 0
+			if end < 0: continue
+			print(start,end)
+			d[:,start:end] = 0
+		return d
+			# self.raw[:,start:end][0] = 0
+
+
+	def annotate_blinks(self):
+		if not hasattr(self,'blink_start'): return False
+		self.raw.annotations = mne.Annotations(self.blink_start,self.blink_duration,'blink')
+
+	def zero_artifact(self, d = None, picks = 'eeg'):
+		if not self.eeg_loaded: return False
+		if self.artifacts == 'NA': return False
+		if type(d) != type(self.raw[:][0]): 
+			if picks == 'eeg': 
+				i = mne.pick_types(self.raw.info,eeg=True)
+				d = self.raw[i,:][0] * 10 ** 6
+			else: d = self.raw[:][0] * 10 ** 6 
+		for a in self.artifacts:
+			print(a.st_sample,a.et_sample)
+			d[:,a.st_sample:a.et_sample] = 0
+		return d
+		
 
 	def load_artifacts(self):
 		'''Loads automatically generated artifact annotations.
@@ -176,7 +221,7 @@ class block:
 		try:
 			self.xml = xml_cnn.xml_cnn(self)
 			self.xml.load()
-			self.xml.xml2bad_epochs()
+			# self.xml.xml2bad_epochs()
 			self.artifacts = [a for a in self.xml.artifacts if a.annotation == 'artifact']
 			self.nartifacts = len(self.artifacts)
 			self.start_artifacts = [a.st_sample/1000 for a in self.artifacts]
