@@ -97,7 +97,9 @@ class Bad_epoch:
 		if self.end_boundary_ok and not self.end.plotted:
 			self.end.plot()
 		if self.ok and not self.plotted:
-				plt.axvspan(self.start.x,self.end.x, facecolor = self.color, alpha = 0.1) 
+				if self.correct == 'incorrect': color = 'grey'
+				else: color = self.color
+				plt.axvspan(self.start.x,self.end.x, facecolor = color, alpha = 0.1) 
 				if plot_annotation:
 					self.plot_annotation(plot_correct)
 
@@ -115,9 +117,9 @@ class Bad_epoch:
 		if self.ok:
 			if self.end.x > start and self.end.x < end:
 				self.visible = True
-			if self.start.x < end and self.start.x > start:
+			if self.start.x < end and self.start.x >= start:
 				self.visible = True
-			if self.start.x < start and self.end.x > end:
+			if self.start.x < start and self.end.x >= end:
 				self.visible = True
 			self.start.in_plot_epoch(start,end)
 			self.end.in_plot_epoch(start,end)
@@ -167,7 +169,7 @@ class Bad_epoch:
 		if type(annotation) == str:
 			self.annotation = annotation
 		if annotation in self.color_dict.keys(): self.color = self.color_dict[annotation]
-		self.plot_annotation()
+		if self.visible: self.plot_annotation()
 		self.redraw = True
 
 	def set_correct(self,correct = 'correct'):
@@ -196,25 +198,26 @@ class Bad_epoch:
 
 	def plot_annotation(self,plot_correct = True):
 		'''Plot the annotation to the plot window.'''
+		ylow,yhigh = plt.ylim()
 		if self.ok:
 			center = (self.st_sample + self.et_sample) / 2
 			if self.start.visible:
-				plt.annotate(self.annotation,xy=(self.st_sample + 10,1100),color = 'black',fontsize=20)
-				plt.annotate(str(self.epoch_id),xy=(self.st_sample + 100, -50),color = 'black')
-				plt.annotate(str(self.coder),xy=(self.st_sample + 100, -70),color = 'black')
+				plt.annotate(self.annotation,xy=(self.st_sample + 10,yhigh-50),color = 'black',fontsize=20)
+				plt.annotate(str(self.epoch_id),xy=(self.st_sample + 50, ylow+50),color = 'black')
+				plt.annotate(str(self.coder),xy=(self.st_sample + 50, ylow+30),color = 'black')
 				if plot_correct:
 					if self.correct == 'correct':
-						plt.annotate('V', xy=(self.st_sample, -70), color = 'green',fontsize=20)
+						plt.annotate('V', xy=(self.st_sample, ylow+30), color = 'green',fontsize=20)
 					if self.correct == 'incorrect':
-						plt.annotate('X', xy=(self.st_sample, -70), color = 'red',fontsize=20)
+						plt.annotate('X', xy=(self.st_sample, ylow+30), color = 'red',fontsize=20)
 			elif self.end.visible:
-				plt.annotate(self.annotation,xy=(self.et_sample - 1000,1100),color = 'black',fontsize =20)
-				plt.annotate(str(self.epoch_id),xy=(self.et_sample - 1000,-50),color = 'black')
-				plt.annotate(str(self.coder),xy=(self.et_sample + 1000, -70),color = 'black')
+				plt.annotate(self.annotation,xy=(self.et_sample - 100,yhigh-50),color = 'black',fontsize =20)
+				plt.annotate(str(self.epoch_id),xy=(self.et_sample - 100,ylow+50),color = 'black')
+				plt.annotate(str(self.coder),xy=(self.et_sample - 100, ylow+30),color = 'black')
 				if self.correct == 'correct':
-					plt.annotate('V', xy=(self.et_sample - 50, -70), color = 'green',fontsize=20)
+					plt.annotate('V', xy=(self.et_sample - 50, ylow+30), color = 'green',fontsize=20)
 				if self.correct == 'incorrect':
-					plt.annotate('X', xy=(self.et_sample - 50, -70), color = 'red',fontsize=20)
+					plt.annotate('X', xy=(self.et_sample - 50, ylow+30), color = 'red',fontsize=20)
 		
 
 	def del_boundary(self,boundary):
