@@ -137,7 +137,9 @@ class Participant:
 		self.nartifacts += self.sessions[-1].nartifacts
 		self.total_duration += self.sessions[-1].total_duration
 		self.total_artifact_duration += self.sessions[-1].total_artifact_duration
-		self.artifact_perc = self.total_artifact_duration / self.total_duration
+		if self.total_duration > 0:
+			self.artifact_perc = self.total_artifact_duration / self.total_duration
+		else: self.artifact_perc = 0
 		
 		
 			
