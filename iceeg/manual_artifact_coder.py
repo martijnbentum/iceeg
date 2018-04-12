@@ -3,6 +3,7 @@ import bad_epoch
 import copy
 import glob
 from matplotlib import pyplot as plt
+import notes
 import numpy as np
 import os
 import path
@@ -25,6 +26,8 @@ class ac:
 		load_data 	surpress previously generated bad_epochs (create new annotation), old versions are moved to OLD 
 					directory in artifacts folder.
 		'''
+		self.show_complete_bad = True
+		self.artifact_selected = None
 		self.b = b
 		self.coder = coder
 		self.annotation_type = annotation_type
@@ -38,6 +41,7 @@ class ac:
 		self.default_annotation_channel = default_annotation_channel
 		self.channel_mode = 'off'
 		self.channel_mode_index = 0
+		self.heog_view= 'off'
 		self.view_mode = view_mode
 		self.sf = sf
 		self.artifact_index = -1 
@@ -218,7 +222,9 @@ class ac:
 		if there are 100 plot epochs, 1 sets first plot epoch and 5 sets 50th plot epoch'''
 		if n == '0': i = len(self.start_epoch) - 1
 		elif n == '1': i = 0
-		else: i = int(len(self.start_epoch) / 10) * int(n)
+		elif len(self.start_epoch) >= 10: i = int(len(self.start_epoch) / 10) * int(n)
+		elif int(n) < len(self.start_epoch): i =  int(n)
+		else: i = len(self.start_epoch) -1
 			
 		if not self.e_index == i:
 			self.e_index = i
@@ -386,16 +392,19 @@ class ac:
 	def annotate_bad_epoch(self,annotation = ''):
 		'''set the label for the bad epoch.'''
 		boundaries = []
-		for be in self.bad_epochs:
-			if be.ok and be.visible and be.in_bad_epoch(self.mousex):
-				boundaries.extend([be.start,be.end])
-		dist = self.length * 1000 * 2 
-		if len(boundaries) == 0: return 0
-		for b in boundaries:
-			if abs(b.x - self.mousex) < dist:
-				closest = b
-		be = self.get_bad_epoch(closest)	
-		print(self.mousex)
+		if self.artifact_selected != None and self.annotation_type == 'corrector':
+			be = self.artifact_selected
+		else:
+			for be in self.bad_epochs:
+				if be.ok and be.visible and be.in_bad_epoch(self.mousex):
+					boundaries.extend([be.start,be.end])
+			dist = self.length * 1000 * 2 
+			if len(boundaries) == 0: return 0
+			for b in boundaries:
+				if abs(b.x - self.mousex) < dist:
+					closest = b
+			be = self.get_bad_epoch(closest)	
+			print(self.mousex)
 		print(be)
 		if annotation == 'correct' or annotation == 'incorrect':
 			be.set_correct(annotation)
@@ -430,7 +439,7 @@ class ac:
 		'''Create a end boundary, and either add this to closest start boundary or create new epoch.'''
 		if self.event.xdata < self.data.shape[1]: x = self.event.xdata
 		else: x = self.data.shape[1] - 1 
-		boundary = bad_epoch.Boundary(self.event.xdata,'end')
+		boundary = bad_epoch.Boundary(x,'end')
 		if self.channel_mode == 'on': self.channel_boundaries.append(boundary)
 		else: self.boundaries.append(boundary)
 		be = self.find_completion_bad_epoch(boundary_type = 'start')
@@ -467,9 +476,12 @@ class ac:
 			if before > after: boundary = self.after_boundaries[0]
 
 		be = self.get_bad_epoch(boundary)
-		if self.channel_mode == 'on': self.channel_boundaries.pop(self.channel_boundaries.index(boundary))
-		else: self.boundaries.pop(self.boundaries.index(boundary))
-		be.del_boundary(boundary)
+		if self.channel_mode == 'on' and be.channel == self.ch_names[self.channel_mode_index]: 
+			self.channel_boundaries.pop(self.channel_boundaries.index(boundary))
+			be.del_boundary(boundary)
+		elif self.channel_mode == 'off': 
+			self.boundaries.pop(self.boundaries.index(boundary))
+			be.del_boundary(boundary)
 		if be.empty: 
 			self.delete_bad_epoch(be.epoch_id)
 			self.redraw = True
@@ -477,9 +489,10 @@ class ac:
 
 
 
-	def find_next_artifact_epoch(self):
+	def find_next_artifact_epoch(self,direction = 'forward'):
 		artifact_names = ['garbage','unk','drift','artifact']
-		epoch_index = self.e_index + 1
+		if direction == 'forward': epoch_index = self.e_index + 1
+		if direction == 'backward': epoch_index = self.e_index - 1
 		while True:
 			for be in self.bad_epochs:
 				if be.annotation in artifact_names:
@@ -487,25 +500,17 @@ class ac:
 						if be.epoch_id != self.old_epoch_id:
 							self.old_epoch_id = be.epoch_id
 							return epoch_index
-			epoch_index += 1
-			if epoch_index >= len(self.start_epoch):
+			if direction == 'forward': epoch_index += 1
+			if direction == 'backward': epoch_index -= 1
+
+			if direction == 'forward' and epoch_index >= len(self.start_epoch):
 				print('full circle LAST BAD EPOCH LAST BAD EPOCH\n'*30)
 				return len(self.start_epoch) - 1
-
-
-	def next_artifact_index(self):
-		artifact_names = ['garbage','unk','drift']
-		self.artifact_indices = [i for i,be in enumerate(self.bad_epochs) if be.annotation in artifact_names]
-		current_index = self.artifact_index
-		while True:
-			self.artifact_index += 1 
-			if self.artifact_index >= len(self.bad_epochs): 
-				self.artifact_index = 0
+			if direction == 'backward' and epoch_index < 0:
 				print('full circle LAST BAD EPOCH LAST BAD EPOCH\n'*30)
-				break
-			be = self.bad_epochs[self.artifact_index]
-			if be.annotation in artifact_names:
-				break
+				return 0
+
+
 
 	def jump_to_next_artifact(self):
 		new_e_index = self.find_next_artifact_epoch()
@@ -518,17 +523,12 @@ class ac:
 			
 
 	def jump_to_previous_artifact(self):
-		self.artifact_index -= 1 
-		print('artifact_index:',self.artifact_index, 'going backwards')
-		if self.artifact_index < 0: self.artifact_index = len(self.bad_epochs) 
-		be = self.bad_epochs[self.artifact_index]
-		for index in range(len(self.start_epoch)):
-			if self.start_epoch[index] <= be.start.x <= self.end_epoch[index]:
-				self.e_index = index
-				break
-		self.reset_visible()
-		self.handle_plot(force_redraw = True)
-			
+		new_e_index = self.find_next_artifact_epoch('backward')
+		if self.e_index != new_e_index: 
+			self.e_index = new_e_index
+			self.reset_visible()
+			self.handle_plot(force_redraw = True)
+		else: self.jump_to_previous_artifact()
 
 
 	def on_click(self,event):
@@ -579,7 +579,12 @@ class ac:
 		self.make_epoch()
 		print(i,self.length)
 		for i in range(len(self.start_epoch)):
-			if self.start_epoch[i] < self.mousex< self.end_epoch[i]:
+			if self.artifact_selected:
+				self.artifact_selected.in_plot_epoch(self.start_epoch[i],self.end_epoch[i])
+				if self.artifact_selected.visible: 
+					self.e_index = i
+					break
+			elif self.start_epoch[i] < self.mousex< self.end_epoch[i]:
 				self.e_index = i
 		self.reset_visible()
 		self.handle_plot(force_redraw=True)
@@ -603,8 +608,9 @@ class ac:
 	def toggle_channel_mode(self,event):
 		if event.key == ';':
 			if self.channel_mode == 'on': self.channel_mode = 'off'
-			elif self.channel_mode == 'off': self.channel_mode = 'on'
+			else: self.channel_mode = 'on'
 		else: self.channel_mode = 'on'
+		if self.channel_mode == 'on': self.heog_view = 'off'
 		if event.key == 'up': self.channel_mode_index+= 1
 		if event.key == 'down': self.channel_mode_index-= 1
 		if self.channel_mode_index < 0: self.channel_mode_index = len(self.ch_names) -1
@@ -631,6 +637,63 @@ class ac:
 		self.handle_plot(force_redraw=True)
 		
 
+	def toggle_heog(self):
+		if self.heog_view == 'on':
+			self.heog_view = 'off' 
+		elif self.heog_view == 'off':
+			self.heog_view = 'on'
+			self.channel_mode = 'off'
+		self.handle_plot(force_redraw=True)
+
+	def select_artifact(self,move = 'next'):
+		'''Select a bad epoch that is visible on screen without moving mouse.'''
+		print('selecting...')
+		if move == 'clear':
+			print('clearing')
+			self.artifact_selected = None
+			self.handle_plot(force_redraw=True)
+			return 0
+
+		visible_be = []
+		for be in self.bad_epochs:
+			if be.visible:
+				visible_be.append(be)
+
+		visible_be.sort()
+		print(visible_be,'found epochs')
+		if self.artifact_selected == None or move == 'first':  
+			index = 0
+		elif move == 'last':
+			index = -1
+		else:
+			index = visible_be.index(self.artifact_selected)
+			if move == 'next':
+				index += 1
+				if index == len(visible_be):  
+					self.jump_to_next_artifact()
+					self.select_artifact('first')
+					return 0
+			if move == 'back':
+				index -= 1
+				if index < 0: 
+					self.jump_to_previous_artifact()
+					self.select_artifact('last')
+					return 0
+		self.artifact_selected = visible_be[index]
+		print(self.artifact_selected,'found artifact')
+		self.handle_plot(force_redraw=True)
+
+		
+	def handle_note(self):
+		# plt.close(self.fig)
+		n = notes.note(windower.make_name(self.b),annotation_type='channels')
+		n.edit()
+		self.handle_plot(force_redraw=True)
+		
+	def toggle_show_complete_bad(self):
+		if self.show_complete_bad: self.show_complete_bad = False
+		else: self.show_complete_bad = True
+		self.handle_plot(force_redraw=True)
 
 	def on_key(self,event):
 		'''Handle a key press event - links to pyplot window event manager.'''
@@ -640,6 +703,8 @@ class ac:
 		force_save = False
 		if event.key in ['b','n']:
 			self.handle_epoch_switch(event.key)
+		if event.key == 'K': self.toggle_show_complete_bad()
+		if event.key == 'N': self.handle_note()
 		if event.key == '`':
 			self.jump_to_next_artifact()
 		# if event.key == 'z':
@@ -653,6 +718,10 @@ class ac:
 			self.handle_epoch_jump(event.key)
 		if event.key == 'p': self.purge_bad_epochs()
 		if event.key == 't': self.toggle_view_mode()
+		if event.key == ',': self.toggle_heog()
+		if event.key == '.': self.select_artifact(move ='back')
+		if event.key == '/': self.select_artifact(move ='next')
+		if event.key == 'z': self.select_artifact(move ='clear')
 		# if event.key == 'z': self.toggle_zoom('in')
 		# if event.key == 'Z': self.toggle_zoom('out')
 		if event.key == 'left': self.toggle_zoom(10)
@@ -665,6 +734,10 @@ class ac:
 		self.handle_plot()
 		self.handle_save_xml(force_save)
 		self.last_event_key = event
+		if self.artifact_selected != None and not self.artifact_selected.visible:
+			self.artifact_selected = None
+			print('clear selected artifact')
+		print(self.artifact_selected,'as')
 
 	def purge_bad_epochs(self):
 		if self.channel_mode == 'off':
@@ -736,9 +809,12 @@ class ac:
 		bad_indices = [self.ch_names.index(name) for name in self.complete_bad_channel]
 		for i in self.channel_index: 
 			# plot a channel
-			if i in bad_indices:
-				plt.plot(yx,y[i,:]+offset,linewidth = 6,color='black',alpha =0.2)
+			if i in bad_indices: 
+				if self.show_complete_bad:
+					plt.plot(yx,y[i,:]+offset,linewidth = 6,color='black',alpha =0.2)
 			elif self.channel_mode == 'on' and i != self.channel_mode_index:
+				plt.plot(yx,y[i,:]+offset,linewidth = 0.9,color=clist[ci],alpha =0.1)
+			elif self.heog_view == 'on' and self.ch_names[i] not in ['F7','F8']:
 				plt.plot(yx,y[i,:]+offset,linewidth = 0.9,color=clist[ci],alpha =0.1)
 			else:
 				plt.plot(yx,y[i,:]+offset,linewidth = 0.9,color=clist[ci])
@@ -778,7 +854,8 @@ class ac:
 		#plot bad epochs
 		if show_bad_epoch:
 			for be in self.bad_epochs:
-				be.plot()
+				if be == self.artifact_selected: be.plot(selected = True)
+				else: be.plot()
 		if show_bad_channels:
 			for bc in self.bad_channels:
 				i = self.ch_names.index(bc.channel)
@@ -809,4 +886,18 @@ class ac:
 				return k
 		return None
 
+
+	def next_artifact_index(self):
+		artifact_names = ['garbage','unk','drift']
+		self.artifact_indices = [i for i,be in enumerate(self.bad_epochs) if be.annotation in artifact_names]
+		current_index = self.artifact_index
+		while True:
+			self.artifact_index += 1 
+			if self.artifact_index >= len(self.bad_epochs): 
+				self.artifact_index = 0
+				print('full circle LAST BAD EPOCH LAST BAD EPOCH\n'*30)
+				break
+			be = self.bad_epochs[self.artifact_index]
+			if be.annotation in artifact_names:
+				break
 '''
