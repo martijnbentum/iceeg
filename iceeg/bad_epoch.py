@@ -89,7 +89,7 @@ class Bad_epoch:
 			self.duration = self.et_sample - self.st_sample
 
 
-	def plot(self,plot_annotation = True,plot_correct =True):
+	def plot(self,plot_annotation = True,plot_correct =True,selected = False):
 		'''plot start / end boundary object add transparent color over time window and plot annotation epoch id.'''
 		if not self.visible: return 0
 		if self.start_boundary_ok and not self.start.plotted:
@@ -100,6 +100,12 @@ class Bad_epoch:
 				if self.correct == 'incorrect': color = 'grey'
 				else: color = self.color
 				plt.axvspan(self.start.x,self.end.x, facecolor = color, alpha = 0.1) 
+				if selected:
+					plt.axvspan(self.start.x,self.end.x,ymin = 0.05,ymax=0.95, facecolor = 'yellow', alpha = 0.4) 
+					plt.axvspan(self.start.x,self.end.x,ymin=0,ymax=0.05, facecolor = color, alpha = 0.1) 
+					plt.axvspan(self.start.x,self.end.x,ymin=0.95,ymax=1, facecolor = color, alpha = 0.1) 
+				else:
+					plt.axvspan(self.start.x,self.end.x, facecolor = color, alpha = 0.1) 
 				if plot_annotation:
 					self.plot_annotation(plot_correct)
 
