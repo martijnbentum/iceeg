@@ -65,6 +65,9 @@ def compute_overlap(start_a,end_a,start_b, end_b):
 def load_ch_names():
 	return open(path.data + 'channel_names.txt').read().split('\n')
 
+def load_selection_ch_names():
+	return [ch for ch in open(path.data + 'channel_names_selection.txt').read().split('\n') if ch]
+
 def load_100hz_numpy_block(name):
 	return np.load(path.eeg100hz + name + '.npy')
 
