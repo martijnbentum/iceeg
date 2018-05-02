@@ -24,7 +24,7 @@ class Bad_channel(bad_epoch.Bad_epoch):
 		self.alpha = alpha
 		self.linestyle= linestyle
 		self.offset = 0
-		self.color_dict = {'heog':'green','jump':'cyan','garbage':'black','unk':'red','maybe':'purple','all':'grey','high-frequency':'gold'}
+		self.color_dict = {'heog':'green','jump':'cyan','garbage':'black','unk':'red','maybe':'purple','all':'grey','high-frequency':'gold','clean':'white','artifact':'blue'}
 		if color == '':
 			self.color = self.color_dict[annotation] 
 
