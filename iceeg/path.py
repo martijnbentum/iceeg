@@ -5,7 +5,7 @@ bak = ''
 current_directory = os.path.dirname(os.path.abspath(__file__))
 
 if os.path.isdir('/Volumes/BAK4TB/'): bak = '/Volumes/BAK4TB/'
-if os.path.isdir('/Volumes/storage/BAK/'): bak = '/Volumes/storage/BAK/'
+if os.path.isdir('/Volumes/Bigstorage/BAK/'): bak = '/Volumes/Bigstorage/BAK/'
 if os.path.isdir('/Volumes/BAK1TB/'): bak = '/Volumes/BAK1TB/'
 
 if os.path.isdir('/Volumes/WINDOW/EEG/'): volume = '/Volumes/WINDOW/'
@@ -49,7 +49,6 @@ eeg100hz = data + 'EEG100hz/'
 video_log = data + 'VIDEO_LOG_EEG/'
 video_data = bak + 'EEG_VIDEO/'
 video_frames= bak + 'EEG_VIDEO_FRAMES/'
-auto_encoder_data = bak + 'AUTO_ENCODER_DATA/'
 artifact_training_data = bak + 'ARTIFACT_TRAINING_DATA/'
 artifact_training_dataraw = bak + 'ARTIFACT_TRAINING_DATARAW/'
 artifact_data_all_pp = bak + 'ARTIFACT_DATA_ALL_PP/'
@@ -61,3 +60,9 @@ artifact_cnn_xml = data + 'ARTIFACT_CNN_XML/'
 ica_solutions = data + 'ICA_SOLUTIONS/'
 bad_channels = data + 'BAD_CHANNELS/'
 notes = data + 'NOTES/'
+
+channel_artifacts_clean = data + 'CHANNEL_ARTIFACTS_CLEAN/'
+channel_artifact_training_data = bak + 'CHANNEL_ARTIFACT_TRAINING_DATA/'
+model_channel = bak + 'MODEL_CHANNEL/'
+channel_snippet_annotation = bak + 'CHANNEL_SNIPPET_ANNOTATION/'
+
