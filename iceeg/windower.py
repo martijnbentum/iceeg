@@ -2,6 +2,7 @@
 
 import block
 import copy
+import glob
 import load_all_ort
 import numpy as np
 import os
@@ -90,6 +91,22 @@ class Windower:
 				raise ValueError('Start sample block datastats', be_block_st, 'does not equal start sample bad_epoch',self.st_sample)
 		else: print('No bad epochs in this block.')
 
+	def load_channel_annotations(self, fn_annotation = None):
+		'''Load the labels corresponding to this block in the bad_channels filed  and order the bad_epochs based on start time.'''
+		if fn_annotation != None:
+			self.fn_annotation = fn_annotation
+		if self.fn_annotation == None:
+			self.annotations, self.bad_channel= None, None
+			print('Please provide annotation filename to load annotation.')
+			return 0
+		self.annotations = xml_handler.xml_handler(filename = self.fn_annotation)
+		self.bad_channels= self.annotations.xml2bad_channels() 
+		self.bad_channels.sort()
+		if len(self.bad_channels) > 0:
+			bc_block_st = self.bad_channels[0].block_st_sample
+			if self.st_sample != bc_block_st:
+				raise ValueError('Start sample block datastats', bc_block_st, 'does not equal start sample bad_epoch',self.st_sample)
+		else: print('No bad channels in this block.')
 				
 	def make_info_matrix(self, default_class = 'clean', add_pp_info = False):
 		'''Create a np matrix with the type of artefact and the amount of overlap between bad_epoch and a window.
@@ -151,6 +168,30 @@ class Windower:
 				self.info_matrix[index,start_overlap_column + self.annot2int[annotation]] = overlap[i]
 				self.info_matrix[index,-3:] = self.pp_id, self.exptype2int[self.exp_type], self.bid
 
+
+	def make_channel_ca_info_matrix(self, add_pp_info = False):
+		'''Create a np matrix with clean-artifact annotation and the amount of overlap between bad_epoch and a window.
+		Row indices correspond of the info matrix correspond with the row indices of the windowed data
+		Column indices correspond with the channel.
+		pp_info is optionally set in the last three columns of the info matrix
+
+		add_pp_info 		sets whether to add id info about the slices
+		'''
+		self.exptype2int = utils.exptype2int
+		self.channels = utils.load_selection_ch_names()
+		self.channel2index = dict([[ch,self.channels.index(ch)] for ch in self.channels])
+		snips = self.windows['sf1000']
+		self.fn_annotation = block2channel_fn_annotation(self.b, directory = path.channel_artifacts_clean)
+		self.load_channel_annotations(fn_annotation = self.fn_annotation)
+		if add_pp_info: self.info_matrix = np.zeros((len(snips.start_snippets),len(self.channels) + 3 ))
+		else: self.info_matrix = np.zeros((len(snips.start_snippets),len(self.channels)))
+		for bc in self.bad_channels:
+			if bc.annotation == 'clean':continue
+			indices,overlap = find_snippet_index_and_overlap_bad_epoch(snips.start_snippets,snips.end_snippets,bc)			
+			for i, index in enumerate(indices):
+				self.info_matrix[index,self.channel2index[bc.channel]] = overlap[i]
+				if add_pp_info:
+					self.info_matrix[index,-3:] = self.pp_id, self.exptype2int[self.exp_type], self.bid
 
 class Snippets:
 	def __init__(self,nsamples,length_seconds,sf,window_overlap,window_overlap_percentage):
@@ -226,6 +267,15 @@ def block2fn_annotation(b, coder = 'martijn', directory = None):
 	if directory == None: directory = path.artifacts
 	return find_annotation_file(b.pp_id, b.exp_type,b.bid,coder = coder, directory = directory)
 	
+def block2channel_fn_annotation(b, directory = None):
+	if directory == None: directory = path.channel_artifacts_clean
+	f = directory + '*_pp' + str(b.pp_id) + '_exp-' + b.exp_type + '_bid-' +str(b.bid) + '_channels.xml'
+	print(f)
+	fn = glob.glob(f)
+	# if len(fn) != 1: raise ValueError(len(fn),'should be 1',fn)
+	if len(fn) > 1: raise ValueError(len(fn),'should be 1',fn)
+	elif len(fn) == 0: return 0
+	return fn[0]
 
 def compute_overlap(start_a,end_a,start_b, end_b):
 	'''compute the percentage b overlaps with a.
@@ -263,6 +313,7 @@ def find_snippet_index_and_overlap_bad_epoch(starts,ends,be):
 	return indices, overlaps
 
 
+
 def load_block(self, fo = None):
 	'''Load block object based on participant and experimental session info.'''	
 	if not hasattr(self,'pp_id') or not hasattr(self,'exp_type') or not hasattr(self,'bid'):
@@ -275,7 +326,7 @@ def load_block(self, fo = None):
 	self.block = getattr(s,'b' + str(self.bid))
 
 
-def window_data(data,snips,flatten = False, normalize = False):
+def window_data(data,snips,flatten = False, normalize = False, cut_off=100):
 	if flatten: windowed_data = np.zeros((snips.nsnippets,data.shape[0]*snips.length_samples))
 	else: windowed_data = np.zeros((snips.nsnippets,data.shape[0],snips.length_samples))
 	data *= 10 ** 6
@@ -283,7 +334,7 @@ def window_data(data,snips,flatten = False, normalize = False):
 		start,end = snips.start_snippets[i],snips.end_snippets[i]
 		# print(i,start,end)
 		if flatten:
-			if normalize: d = normalize_numpy_matrix(data[:,start:end], cut_off=100)
+			if normalize: d = normalize_numpy_matrix(data[:,start:end], cut_off=cut_off)
 			else: d = data[:,start:end]
 			windowed_data[i] = np.reshape( d, data.shape[0]*snips.length_samples)
 		else:
