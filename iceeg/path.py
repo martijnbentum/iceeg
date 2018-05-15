@@ -65,4 +65,6 @@ channel_artifacts_clean = data + 'CHANNEL_ARTIFACTS_CLEAN/'
 channel_artifact_training_data = bak + 'CHANNEL_ARTIFACT_TRAINING_DATA/'
 model_channel = bak + 'MODEL_CHANNEL/'
 channel_snippet_annotation = bak + 'CHANNEL_SNIPPET_ANNOTATION/'
+artifact_ch_cnn_xml = data + 'ARTIFACT_CH_CNN_XML/'
+channel_cnn_output_data = bak + 'CHANNEL_CNN_OUTPUT_DATA/'
 
