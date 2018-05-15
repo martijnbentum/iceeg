@@ -83,8 +83,10 @@ def precision_recall(cm):
 	f1_1 = 2 * (1 / ( (1/recall_1) + (1/precision_1) ))
 	mcc = matthews_correlation_coefficient(cm)
 
-	fpr_0 = cm[1,0]/ (cm[1,0] + cm[1,1])
-	fpr_1 = cm[0,1]/ (cm[0,1] + cm[0,0])
+	# fpr_0 = cm[1,0]/ (cm[1,0] + cm[1,1])
+	# fpr_1 = cm[0,1]/ (cm[0,1] + cm[0,0])
+	fpr_0 = cm[1,0]/ (cm[1,0] + cm[0,0])
+	fpr_1 = cm[0,1]/ (cm[0,1] + cm[1,1])
 	return recall_0,precision_0,f1_0,recall_1,precision_1,f1_1,mcc,fpr_0,fpr_1
 
 def make_precision_recall_dict(output_dict):
@@ -323,6 +325,17 @@ def load_cm_perc():
 		cm_dict[perc] = np.load(f) 
 	return cm_dict
 
+
+def load_cm_channel_perc():
+	cm_dict = {}
+	filenames = glob.glob(path.model_channel+ '*cm*')
+	print(filenames)
+	for f in filenames:
+		name= f.split('part-')[-1].split('_tp-1')[0]
+		cm_dict[name] = np.load(f) 
+	return cm_dict
+
+
 def load_cm_cnn_op(window_length =101):
 	cm_dict ={}
 	fn = glob.glob(path.confusion_matrices + 'cnn_outputdata_*')
@@ -361,14 +374,17 @@ def plot_cm_roc(cm_dict,class_label = 1, mcc_plot = False, plot_id = None, color
 	plt.ylabel('true positive rate / recall')
 	plt.xlabel('false positive rate')
 	plt.ylim(0,1)
+	plt.xlim(0,1)
 	# plt.legend(('clean','artifact'))
 	plt.title('ROC curve')
 	plt.grid()
+	plt.savefig(path.model_channel + 'pr_plot.png')
 	if mcc_plot:
 		fmmc = plt.figure()
 		plt.plot(d.threshold,d.mcc,mcccolor)
 		plt.title('Matthews correlation coefficient')
 		plt.grid()
+		plt.savefig(path.model_channel + 'mcc_plot.png')
 	else:return f
 	return f,fmmc
 
