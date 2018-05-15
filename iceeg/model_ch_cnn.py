@@ -11,6 +11,7 @@ from __future__ import print_function
 
 import cnn_output_data 
 import copy
+import glob
 import model_cnn_output
 import numpy as np
 import path
@@ -18,12 +19,22 @@ import progressbar as pb
 import random
 import sklearn.metrics
 import sys
+import time
 import tempfile
 import scipy.signal as signal
 import windower
 
-import model7
-
+import importlib
+'''
+temp = glob.glob('model*')
+models = []
+for m in temp:
+	try:
+		int(m[5])
+		models.append(m.split('.')[0])
+	except: continue
+[importlib.import_module(m) for m in models]
+'''
 
 import tensorflow as tf
 
@@ -50,7 +61,10 @@ class model_channel_artifact:
 		self.nsamples = nsamples
 		self.perc_artifact = perc_artifact
 		self.model_number = model_number
+		self.kernel_size = kernel_size
 		self.tf_version = tf_version
+		self.model_name = 'model' + str(self.model_number)
+		self.model_module = importlib.import_module(self.model_name)
 		self.train_accuracy_history, self.test_accuracy_history = [], []
 		self.define_network()
 
@@ -62,13 +76,13 @@ class model_channel_artifact:
 		'''
 		# Create the model
 		self.x = tf.placeholder(tf.float32, [None, self.nrows_per_sample* self.nsamples])
-		print(self.x)
+		print(self.x,'x')
 		# Define loss and optimizer
 		self.y_ = tf.placeholder(tf.float32, [None, 2])
-		print(self.y_)
+		print(self.y_,'y_')
 		# Build the graph for the deep net
-		if self.model_number == 7:
-			self.y_conv, self.keep_prob = model7.deepnn(self.x,self.nrows_per_sample,self.nsamples)
+		deepnn = getattr(self.model_module,'deepnn')
+		self.y_conv, self.keep_prob = deepnn(self.x,self.nrows_per_sample,self.nsamples,self.kernel_size)
 
 		with tf.name_scope('loss'):
 			cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=self.y_, logits=self.y_conv)
@@ -120,20 +134,26 @@ class model_channel_artifact:
 			bar.update(i)
 			batch = next_batch_ratio(self.data,perc_artifacts= self.perc_artifact,nsamples=self.nsamples)
 			if i % int(ncycles/10) == 0:
-				small_test_batch = next_batch_ratio(self.data,name='smalltest',perc_artifacts=.5,nsamples=1000)
+				small_test_batch = next_batch_ratio(self.data,name='smalltest',perc_artifacts=.5,nsamples=500)
 				train_accuracy = self.accuracy.eval(feed_dict={
 						self.x: small_test_batch[0], self.y_: small_test_batch[1], self.keep_prob: 1.0},session = self.sess)
 				print('step %d, accuracy on 500 test items:%g' % (i, train_accuracy))
+				# print('step %d, loss:%g' % (i, loss))
+	
 				self.train_accuracy_history.append(train_accuracy)
 			self.train_step.run(feed_dict={self.x: batch[0], self.y_: batch[1], self.keep_prob: 0.5},session = self.sess)
 
-		test_batch = next_batch_ratio(self.data,'smalltest',perc_artifacts=.5,nsamples=5000)
+		test_batch = next_batch_ratio(self.data,'smalltest',perc_artifacts=.5,nsamples=1000)
 		test_accuracy = self.accuracy.eval(feed_dict={ self.x: test_batch[0], self.y_: test_batch[1], self.keep_prob: 1.0},session = self.sess)
 		self.test_accuracy_history.append(test_accuracy)
 		print('test accuracy %g' %test_accuracy) 
+		clock = time.strftime("%H:%M:%S\t%b-%d-%Y", time.localtime(time.time()))
+		fout = open(path.data + 'test_output.txt','a')
+		fout.write(str(test_accuracy) +'\t' +str(self.perc_artifact) + '\t' + str(self.data.part)+'\t' + clock+ '\tkernel' + str(self.kernel_size) + '\t' + self.model_name + '\n')
+		fout.close()
 
 
-	def eval_test_set(self,load_next_test_part = True, batch_size=800,save = False,identifier = ''):
+	def eval_test_set(self,load_next_test_part = True, batch_size=1200,save = False,identifier = '',subset = True):
 		'''Evaluate a test set, artifact and clean data is loaded and test seperately.
 		the test sets are loaded in the cnn_data object according to 10 fold cross validation, each fold
 		is divided in multiple parts due to data size, one part is loaded per evaluation.
@@ -142,6 +162,8 @@ class model_channel_artifact:
 		batch_size 		number of epochs to test in one go, depends on RAM size for optimum value
 		save 			whether to save the evaluation output
 		identifier 		string to be prepended to the evaluation filename
+		subset 			whether to select 25% of the test file for evaluation
+						cuts down 4 M to 1 M of samples
 		'''
 		if load_next_test_part: 
 			loaded = self.data.load_next_test_part()
@@ -149,7 +171,11 @@ class model_channel_artifact:
 
 		data =getattr(self.data,'test_data')
 		info =getattr(self.data,'test_info')
-		self.ground_truth = np.ravel(info)
+		if subset:
+			indices = np.load(path.channel_artifact_training_data + 'PART_INDICES/eval_subset_indices_perc-25.npy')
+			data = data[indices,:]
+			info = info[indices,:]
+		self.ground_truth = np.ravel(info,'F')
 		self.predicted = np.zeros(self.ground_truth.shape[0])
 		# self.predicted_perc = np.zeros((self.ground_truth.shape[0]))
 		nrows = data.shape[0]
@@ -161,13 +187,12 @@ class model_channel_artifact:
 			self.predicted[i*nrows:i*nrows+nrows]= self.compute_prediction_class(data,batch_size)
 			# self.predicted_perc[i*nrows:i*nrows+nrows]= self.prediction_perc
 
-
 		self.confusion_matrix = sklearn.metrics.confusion_matrix(self.ground_truth,self.predicted)
 		self.report = sklearn.metrics.classification_report(self.ground_truth,self.predicted)
 		print(self.report)
-		self.save_evaluation(identifier)
+		if save:
+			self.save_evaluation(identifier)
 		return True
-
 
 	def predict_block(self,b, batch_size=800, identifier = '', save = True):
 		'''Use currently loaded model to classify epochs of block.
@@ -186,16 +211,18 @@ class model_channel_artifact:
 		nrows = data.shape[0]
 		data = np.reshape(data,(nrows,-1))
 
-		self.predicted = np.zeros(nrows*self.nchannels)
-		self.predicted_perc = np.zeros((nrows*self.nchannels,2))
+		self.prediction_block_class= np.zeros((nrows,self.nchannels))
+		self.prediction_block_perc= np.zeros((nrows,self.nchannels))
 
 		for i in range(self.nchannels):
 			print('original ch index:',i,'transelated index:',self.chindex[i])
 			set_target_channel(data,[self.chindex[i]] * data.shape[0])
-			self.predicted[i*nrows:i*nrows+nrows]= self.compute_prediction_class(data,batch_size)
-			self.predicted_perc[i*nrows:i*nrows+nrows,:]= self.prediction_perc
+			self.prediction_block_class[:,i]= self.compute_prediction_class(data,batch_size)
+			self.prediction_block_perc[:,i]= self.prediction_perc[:,1]
+			# self.predicted[i*nrows:i*nrows+nrows]= self.compute_prediction_class(data,batch_size)
+			# self.predicted_perc[i*nrows:i*nrows+nrows,i]= self.prediction_perc[:,1]
 
-		output_name = path.snippet_annotation+ identifier + self.filename_model.split('/')[-1] + '_' + name 
+		output_name = path.channel_snippet_annotation+ identifier + self.filename_model.split('/')[-1] + '_' + name 
 		if save:
 			print('saving predictions to filename:',output_name)
 			np.save(output_name + '_class',self.prediction_block_class)
@@ -212,15 +239,17 @@ class model_channel_artifact:
 		test_part = str(self.data.current_test_part_index + 1)
 		fold = str(self.data.fold)
 		perc_artifact = str(int(self.perc_artifact *100))
-		eval_name = path.model_channel + identifier + 'evaluation_perc-'+perc_artifact+'_fold-'+ fold + '_part-' + part + '_tp-' + test_part
-		cm_name= path.data+ identifier + 'evaluation_perc-'+perc_artifact+'_fold-'+ fold + '_part-' + part + '_tp-' + test_part
+		kernel = str(self.kernel_size)
+		model = self.model_name
+		eval_name = path.model_channel + identifier + 'evaluation_perc-'+perc_artifact+'_fold-'+ fold + '_part-' + part + '_tp-' + test_part + '_kernel-'+kernel + model
+		cm_name= path.data+ identifier + 'evaluation_perc-'+perc_artifact+'_fold-'+ fold + '_part-' + part + '_tp-' + test_part + '_kernel-'+kernel + model
 		print('saving evaluation:',eval_name)
 		np.save(eval_name + '_gt',self.ground_truth)
 		np.save(eval_name + '_predicted',self.predicted)
 		np.save(eval_name + '_cm',self.confusion_matrix)
 		np.save(cm_name+ '_cm',self.confusion_matrix)
 
-		fout = open(eval_name + '_report.txt')
+		fout = open(eval_name + '_report.txt','w')
 		fout.write(self.report)
 		fout.close()
 
@@ -285,8 +314,10 @@ class model_channel_artifact:
 	def make_model_name(self, identifier = ''):
 		part = str(self.data.current_part_index + 1)
 		fold = str(self.data.fold)
+		kernel = str(self.kernel_size)
+		model = self.model_name
 		perc_artifact = str(int(self.perc_artifact *100))
-		self.filename_model = path.model_channel + identifier +'perc-'+perc_artifact+'_fold-'+ fold + '_part-' + part
+		self.filename_model = path.model_channel + identifier +'perc-'+perc_artifact+'_fold-'+ fold + '_part-' + part + '_kernel-' + kernel + '_' + model
 
 
 	def save_model(self,identifier = ''):
@@ -298,7 +329,7 @@ class model_channel_artifact:
 		# ma.initialize()
 
 
-	def handle_folds(self,start_part = 1,save_every_nsteps = 10,evaluate = True,identifier = '',nparts ='all', ntrain = 5000):
+	def handle_folds(self,start_part = 1,save_every_nsteps = 10,evaluate = True,identifier = '',nparts ='all', ntrain = 1000):
 		'''Train model on a specific fold (ordering of training and test files) and train them on some of all of these files.
 		start_part 		the part to start training on
 		save_every... 	the number of training files after which to evaluate the model
@@ -358,7 +389,7 @@ class model_channel_artifact:
 		self.data.block2eegdata(b)
 		
 			
-def handle_artifact_percs(m,artifact_percs = [0.5,0.875,0.125,0.75,0.25],nparts = 10,start_part = 1,identifier = 'perc-comparison_',ntrain = 5000):
+def handle_artifact_percs(m,artifact_percs = [0.1,0.6,0.4,0.875,0.125,0.75,0.25],nparts = 10,start_part = 1,identifier = 'perc-comparison_',ntrain = 1000,save_every_nsteps=10):
 	if not hasattr(m,'sess'): m.initialize()
 	for i,perc in enumerate(artifact_percs):
 		print(i,len(artifact_percs),'artifact perc:',perc,'train cycles:',ntrain,'nparts',nparts)
@@ -367,11 +398,11 @@ def handle_artifact_percs(m,artifact_percs = [0.5,0.875,0.125,0.75,0.25],nparts 
 			m.clean_up()
 			m = load_model(path.model_channel + identifier + 'perc-' + str(int(perc*100)) + '_fold-'+str(m.data.fold) + '_part-' + str(start_part - 1),m.data)
 		m.perc_artifact = perc
-		m.handle_folds(start_part = start_part,nparts = nparts, ntrain = ntrain, identifier = identifier)
+		m.handle_folds(start_part = start_part,nparts = nparts, ntrain = ntrain, identifier = identifier,save_every_nsteps=save_every_nsteps)
 		m.clean_up()
 		m.data.clean_up()
 		d = m.data
-		m = model_deep_artifact(d)
+		m = model_channel_artifact(d)
 		m.initialize()
 
 
@@ -419,11 +450,14 @@ def samplen_artifact_clean(nsamples,perc_artifacts):
 	return nartifact,nclean
 
 
-def hamming_data(d,nchannels = 32):
+def hamming_data(d,nchannels = None,nsamples = 100):
 	'''Multiply all epochs with a hamming window per channel.
 	Each epoch (row of data in d) contains 100 datapoints from 26 channels
 	The data from each channel should be multiplied with the hamming window
 	'''
+	if nchannels == None: nchannels = int(d.shape[1] / nsamples)
+	# self.hamming_data_nchannels = nchannels
+	# print('hamming nchannels:',nchannels)
 	window_length = int(d.shape[1]/ nchannels)
 	hamming = signal.hamming(window_length)
 	hamming = np.concatenate([hamming] * nchannels)
@@ -468,15 +502,19 @@ def  make_consecutive_batch_indices(nrows,nsamples):
 	return zip(start_indices,end_indices)
 
 
-def set_target_channel(data,target_channels,kernel_size = 6, nchannels = 32):
+def set_target_channel(data,target_channels,kernel_size = 6, nchannels = None, nsamples = 100):
 	'''sets target channel to dataset which already has target channel inserted works in place.
 
 	data 		data which is already inserted with a target channel, provided target channel
 				will overwrite the previously inserted target channel is faster: 570 vs 8.5 ms
 	target_ch.. the channel to be set on previously insert target channel rows
+				channel index should already be converted to inserted matrix index
 	kernel_size height of the kernel
 	nchannels 	number of channels in a sample
 	'''
+	if nchannels == None and len(data.shape) == 3: nchannels = data.shape[1]
+	elif nchannels == None and len(data.shape) == 2: nchannels = int(data.shape[1] / nsamples)
+	# self.set_target_nschannels = nchannels
 	indices = list(range(0,nchannels,kernel_size))
 	for i,m in enumerate(data):
 		m = np.reshape(m,[nchannels,-1])
