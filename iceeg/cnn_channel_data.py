@@ -20,8 +20,8 @@ class cnn_data:
 		if artifact_dir == None: self.artifact_dir = path.channel_artifact_training_data + 'PART_INDICES/'
 		else: self.artifact_dir = artifact_dir
 
-		self.nchannels = 26
-		self.kernel_size = 6
+		self.nchannels = nchannels
+		self.kernel_size = kernel_size
 
 		self.fold = fold
 		self.nfolds = nfolds
@@ -93,7 +93,7 @@ class cnn_data:
 
 		name the type of data: train test smalltest
 		'''
-		self.chindex_dict = make_ch_index_dict()
+		self.chindex_dict = make_ch_index_dict(nchannels = self.nchannels,kernel_size = self.kernel_size)
 		info = getattr(self,name + '_info')
 		setattr(self,name+ '_info',  (info>=0.5).astype(int) )
 		si,chi= np.where(getattr(self,name + '_info')== 0) 
@@ -246,7 +246,8 @@ def load_100hz_numpy_block(name):
 
 def remove_channels(d):
 	ch_names = open(path.data + 'channel_names.txt').read().split('\n')
-	remove_ch = ['Fp2','VEOG','HEOG','TP10_RM','STI 014','LM']
+	# remove_ch = ['Fp2','VEOG','HEOG','TP10_RM','STI 014','LM']
+	remove_ch = ['VEOG','HEOG','TP10_RM','STI 014','LM']
 	'''remove eeg channels, by default the reference and eog channels.'''
 	print('removing channels:',remove_ch)
 	ch_mask = [n not in remove_ch for n in ch_names]
@@ -291,9 +292,9 @@ def make_ch_index_dict(nchannels = 26, kernel_size = 6):
 	'''
 	chindex_dict = {}
 	insert_indices = list(range(0,nchannels,kernel_size-1))
-	org_indices = np.arange(26)
+	org_indices = np.arange(nchannels)
 	new_indices = list(np.insert(org_indices,insert_indices,-1,axis=0))
-	for i in range(26):
+	for i in range(nchannels):
 		chindex_dict[i] = new_indices.index(i)
 	return chindex_dict
 
