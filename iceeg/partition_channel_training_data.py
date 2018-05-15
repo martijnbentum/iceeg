@@ -112,14 +112,19 @@ def write_update(f):
 	fout.write(f+','+ time.asctime( time.localtime(time.time()) ) +'\n')
 	fout.close()
 
-def make_all_parts():
+def make_all_parts(make_parts = []):
 	'''Makes 100 part data files. Artifact parts were loaded from h5 file (clean part are 14X bigger) and were
 	prohibitevily slow. Load data from original block data files speeds it up to 1 hour per file instead of 4-6.'''
+	if make_parts == []: make_parts = 'all'
 	datafn2nrows = load_dict_datafn2nrows()
 	datafn_all_rows_before = make_list_datafn_all_rows_before(datafn2nrows)
 	fn = glob.glob(path.channel_artifact_training_data + 'PART_INDICES/indices*.npy')
 	for i,f in enumerate(fn):
 		print(f,i,len(fn))
+		if make_parts != 'all' and int(f.split('-')[-1].split('.')[0]) not in make_parts:
+			print('skipping:',f)
+			continue
+		else:print('creating part file:', f)
 		write_update(f)
 		indices = np.load(f)
 		filenames_and_indices = make_filenames_and_indices(indices,datafn_all_rows_before)
@@ -130,18 +135,21 @@ def make_all_parts():
 
 
 def make_smalltest(nrow_selection = 10000):
-	number_part = map(str,list(range(1,11)))
+	number_part = list(map(str,list(range(1,11))))
 	for n,i in enumerate(range(1,100,10)):
+		if i == 1: 
+			print('skipping',i)
+			continue
 		print('loading: data and info part-',str(i) , '.npy')
-		d = np.load('data_part-'+str(i) + '.npy')
-		i = np.load('info_part-'+str(i) + '.npy')
+		d = np.load(path.channel_artifact_training_data +'PART_INDICES/data_part-'+str(i) + '.npy')
+		i = np.load(path.channel_artifact_training_data +'PART_INDICES/info_part-'+str(i) + '.npy')
 		nrows = d.shape[0]
 		indices = random.sample(range(nrows),nrow_selection)
 		sd = d[indices,:]
 		si = i[indices,:]
 		print('saving: data and info part-',number_part[n] , '.npy')
-		np.save('smalltest_data_part-'+number_part[n]+'.npy',sd)
-		np.save('dmalltest_info_part-'+number_part[n]+'.npy',si)
+		np.save(path.channel_artifact_training_data +'PART_INDICES/smalltest_data_part-'+number_part[n]+'.npy',sd)
+		np.save(path.channel_artifact_training_data +'PART_INDICES/smalltest_info_part-'+number_part[n]+'.npy',si)
 		
 
 
