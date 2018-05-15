@@ -205,11 +205,13 @@ def make_all_data(remove_other = True,window_length = 201, overwrite = False):
 	overwrite 		whether to overwrite existing predicted artifact files
 	'''
 
+	# create cnn_output format per block file
 	names = get_names_output_files()
 	save_all_predicted_artifacts(window_length = window_length, overwrite = overwrite)
 	bar = pb.ProgressBar()
 	bar(range(len(names)))
 
+	# concatenate cnn_output format files into one data structure
 	for i,name in enumerate(names):
 		bar.update(i)
 		output_filename = name2output_name(name)
