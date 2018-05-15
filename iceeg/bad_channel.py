@@ -9,7 +9,7 @@ class Bad_channel(bad_epoch.Bad_epoch):
 	Contains boundaries (object) of type start and end with start sample with respect to start block
 	Contains info about participant id experiment type block number and start sample of block
 	'''
-	def __init__(self,channel = '', epoch_id =None ,epoch_ids= None,start_boundary = None,end_boundary = None,annotation = 'garbage',coder = 'martijn',color = '', pp_id = None, exp_type = None, block_st_sample = None, bid = None, visible = True, correct = 'correct',block_et_sample = None,alpha = .2,linestyle= '-',offset = 0):
+	def __init__(self,channel = '', epoch_id =None ,epoch_ids= None,start_boundary = None,end_boundary = None,annotation = 'garbage',coder = 'martijn',color = '', pp_id = None, exp_type = None, block_st_sample = None, bid = None, visible = True, correct = 'correct',block_et_sample = None,alpha = .2,linestyle= '-',offset = 0, perc_clean =-9):
 		'''Information about stretch of eeg data containing artefacts.
 		channel 			the channel name
 
@@ -19,7 +19,7 @@ class Bad_channel(bad_epoch.Bad_epoch):
 		color 				color of epoch in plot
 		...
 		'''
-		super().__init__(start_boundary=start_boundary,end_boundary=end_boundary,annotation=annotation,coder=coder,pp_id=pp_id,exp_type=exp_type,block_st_sample=block_st_sample,bid=bid,visible=visible,correct=correct,block_et_sample=block_et_sample,epoch_id = epoch_id,epoch_ids = epoch_ids)
+		super().__init__(start_boundary=start_boundary,end_boundary=end_boundary,annotation=annotation,coder=coder,pp_id=pp_id,exp_type=exp_type,block_st_sample=block_st_sample,bid=bid,visible=visible,correct=correct,block_et_sample=block_et_sample,epoch_id = epoch_id,epoch_ids = epoch_ids,perc_clean=perc_clean)
 		self.channel = channel
 		self.alpha = alpha
 		self.linestyle= linestyle
