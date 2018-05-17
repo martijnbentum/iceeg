@@ -103,8 +103,9 @@ def combine_artifacts(artifacts,stiches):
 		if bc.start.x > artifacts[s[1]].start.x: bc.start = artifacts[s[1]].start
 		if bc.end.x < artifacts[s[1]].end.x: bc.end = artifacts[s[1]].end
 		bc.set_info()
-		if hasattr(bc,'epoch_ids') and getattr(bc,'epoch_ids') != 'NA': bc.epoch_ids += ',' + ','.join([str(bc.epoch_id) for bc in artifacts[s[0]:s[1]+1]])
-		else: bc.epoch_ids = ','.join([bc.epoch_id for bc in artifacts[s[0]:s[1]+1]])
+		if hasattr(bc,'epoch_ids') and getattr(bc,'epoch_ids') not in  ['NA',None]: 
+			bc.epoch_ids += ',' + ','.join([str(bc.epoch_id) for bc in artifacts[s[0]:s[1]+1]])
+		else: bc.epoch_ids = ','.join([str(bc.epoch_id) for bc in artifacts[s[0]:s[1]+1]])
 		bc.annotation = 'artifact'
 		bc.color = 'blue'
 		new_artifacts.append(bc)
