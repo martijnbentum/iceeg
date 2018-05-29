@@ -57,6 +57,7 @@ model_predictions = data + 'MODEL_PREDICTIONS/'
 cnn_output_data = bak + 'CNN_OUTPUT_DATA/'
 
 artifact_cnn_xml = data + 'ARTIFACT_CNN_XML/'
+corrected_artifact_cnn_xml = data + 'CORRECTED_ARTIFACT_CNN_XML/'
 ica_solutions = data + 'ICA_SOLUTIONS/'
 bad_channels = data + 'BAD_CHANNELS/'
 notes = data + 'NOTES/'
