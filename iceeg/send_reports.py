@@ -92,10 +92,11 @@ class report_sender():
 					cmc.plot(plot_type = 'roc',save = True)
 					cmc.plot(plot_type = 'mcc',save = True)
 					cmc.plot(plot_type = 'pr',save = True)
+					cmc.plot(plot_type = 'f',save = True)
 					self.reports.append(open(f).read())
 					subject = ' '.join(f.split('_')[2:-2])
 					message = self.reports[-1] + '\n\n' + last_10_acc + '\n\n'
-					mail.mail(message,subject = subject, to = self.recipients,attach = 'roc.png,mcc.png,pr.png')
+					mail.mail(message,subject = subject, to = self.recipients,attach = 'roc.png,mcc.png,pr.png,f.png')
 					time.sleep(10)
 		self.first_run = False
 
