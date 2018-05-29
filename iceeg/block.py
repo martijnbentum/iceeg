@@ -3,7 +3,7 @@
 block module contains the block class
 the module is used by the experiment class
 '''
-import blinks
+# import blinks
 import mne
 import mne.preprocessing.ica as ica
 import numpy as np
