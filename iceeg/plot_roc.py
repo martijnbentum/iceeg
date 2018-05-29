@@ -79,15 +79,18 @@ class cm_collection:
 				markersize =24 
 			else: 
 				alpha = float(cm.part)/100
-				markersize =9 
+				markersize =6 
 			if plot_type == 'roc':
 				cm.plot_roc(self.figure,alpha= alpha, markersize = markersize)
 			if plot_type == 'mcc': 
 				cm.plot_mcc(self.figure,alpha= alpha, markersize = markersize)
 			if plot_type == 'pr':
 				cm.plot_pr(self.figure,alpha= alpha, markersize = markersize)
+			if plot_type == 'f':
+				cm.plot_f(self.figure,alpha= alpha, markersize = markersize)
 		plt.grid()
-		plt.legend(handles = self.color_patch)
+		if plot_type != 'f':plt.legend(handles = self.color_patch)
+		else: plt.legend(('f1','precision','recall'))
 		if plot_type == 'roc':
 			plt.xlim((0,0.3))
 			plt.ylim((0,1))
@@ -104,6 +107,11 @@ class cm_collection:
 			plt.ylabel('precision')
 			plt.xlabel('recall')
 			plt.title('Precision / Recall')
+		if plot_type == 'f':
+			plt.ylabel('score')
+			plt.xlabel('part')
+			plt.title('F1 - Precision - Recall')
+			
 	
 		if save:
 			plt.savefig(plot_type+'.png')
@@ -114,7 +122,7 @@ class cm_collection:
 class confusion_matrix:
 	'''An object to represent confusion matrix, especially created with respect to model training.
 	'''
-	def __init__(self,filename = '',data = '',part = '',fold ='', kernel = '',perc = '',model= '',tp = '',color = 'grey', marker = 'o'):
+	def __init__(self,filename = '',data = '',part = '',fold ='', kernel = '',perc = '',model= '',tp = '',rep = 0,color = 'grey', marker = 'o'):
 		'''Create cm object based on filename of numpy stored confusion matrix or by 
 		providing numpy array containing confusion matrix
 
@@ -136,6 +144,7 @@ class confusion_matrix:
 		self.perc = perc
 		self.model = model
 		self.tp = tp
+		self.rep = rep
 		self.cm_filename = filename
 		self.color = color
 		self.marker = marker
@@ -184,6 +193,7 @@ class confusion_matrix:
 			if 'tp' in item: self.tp= item.split('-')[-1]
 			if 'kernel' in item: self.kernel= item.split('model')[0].split('-')[-1]
 			if 'model' in item: self.model= item.split('model')[-1]
+			if 'rep' in item: self.rep = int(item.split('-')[-1]) -1
 
 
 	def plot_roc(self,figure = None, alpha = 1,markersize = 10):
@@ -200,7 +210,7 @@ class confusion_matrix:
 			if not hasattr(self,'figure'): self.figure = plt.figure()
 		else: self.figure = figure
 		# plt.figure(self.figure.number)
-		plt.plot(int(self.part),self.mcc,color = self.color, alpha = alpha, marker = self.marker,markersize = markersize)
+		plt.plot(int(self.part)+int(self.rep)*90,self.mcc,color = self.color, alpha = alpha, marker = self.marker,markersize = markersize)
 
 	def plot_pr(self,figure = None, alpha = 1,markersize = 10):
 		'''Plot precision/recall value of cm.'''
@@ -209,6 +219,17 @@ class confusion_matrix:
 		else: self.figure = figure
 		# plt.figure(self.figure.number)
 		plt.plot(self.recall,self.precision,color = self.color, alpha = alpha, marker = self.marker,markersize = markersize)
+
+	def plot_f(self,figure = None, alpha =1, markersize =10):
+		'''Plot matthews correlation coefficient.'''
+		if figure == None:
+			if not hasattr(self,'figure'): self.figure = plt.figure()
+		else: self.figure = figure
+		# plt.figure(self.figure.number)
+		plt.plot(int(self.part)+int(self.rep)*90,self.f1,color = 'purple', alpha = alpha, marker = self.marker,markersize = markersize)
+		plt.plot(int(self.part)+int(self.rep)*90,self.precision,color = 'red', alpha = alpha, marker = self.marker,markersize = markersize)
+		plt.plot(int(self.part)+int(self.rep)*90,self.recall,color = 'blue', alpha = alpha, marker = self.marker,markersize = markersize)
+		
 	
 	def precision_recall(self):
 		'''Compute precision, recall, f1, mmc and false positive rate based on the confusion matrix.'''
