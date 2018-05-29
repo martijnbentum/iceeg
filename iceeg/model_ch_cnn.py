@@ -9,10 +9,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import cnn_output_data 
+# import cnn_output_data 
 import copy
 import glob
-import model_cnn_output
+# import model_cnn_output
 import numpy as np
 import path
 import progressbar as pb
@@ -325,7 +325,7 @@ class model_channel_artifact:
 		'''
 		self.make_model_name(identifier = identifier)
 		saver = tf.train.Saver()
-		saver.save(self.sess,self.filename_model)
+		saver.save(self.sess,self.filename_model,write_meta_graph=False)
 		# ma.initialize()
 
 
@@ -406,11 +406,14 @@ def handle_artifact_percs(m,artifact_percs = [0.1,0.6,0.4,0.875,0.125,0.75,0.25]
 		m.initialize()
 
 
-def load_model(model_name,d):
+def load_model(model_name,d,nthreads = 'all'):
 	'''Load a previously trained model by name and return model object.
 	'''
 	m = model_channel_artifact(d)
-	m.sess = tf.Session()
+	if nthreads != 'all' and type(nthreads) == int:
+		session_config = tf.ConfigProto(intra_op_parallelism_threads=nthreads,inter_op_parallelism_threads=nthreads)
+		m.sess=tf.Session(config = session_config)
+	else: m.sess = tf.Session()
 	m.saver = tf.train.Saver()
 	m.saver.restore(m.sess,model_name)
 	m.filename_model = model_name
