@@ -46,6 +46,7 @@ class ac:
 		self.sf = sf
 		self.artifact_index = -1 
 		self.old_epoch_id = ''
+		self.stop_message = None
 		self.key_dict = {'h':'heog','d':'drift','a':'alpha','g':'garbage','u':'unk','x':'incorrect','v':'correct','j':'jump','c':'ch-jump'}
 		self.key_dict_channel = {'h':'heog','g':'garbage','u':'unk','x':'incorrect','v':'correct','j':'jump','m':'maybe','f':'high-frequency'}
 		self.redraw = False
@@ -72,7 +73,15 @@ class ac:
 		self.reset_visible()
 		self.handle_plot(True)
 		self.redraw = False
-		self.run()
+		if self.annotation_type == 'corrector' and len(self.bad_epochs) == 0:
+			print('\n\n\nNo bad_epochs nothing to be done, copying file to corrected folder')
+			c = 'cp '+self.filename+' '+path.corrected_artifact_cnn_xml+self.filename.split('/')[-1] 
+			print('copying: ', self.filename.split('/')[-1], 'to: ', path.corrected_artifact_cnn_xml) 
+			os.system(c)
+			plt.close(self.fig)
+		else: self.run()
+		
+
 
 	def find_cnn_xml_filename(self):
 		filename = path.data + self.save_dir + self.coder + '_' + windower.make_name(self.b) + '.xml'
@@ -196,6 +205,8 @@ class ac:
 	def run(self):
 		'''Ask user input, used as an hack to catch input intended for the pyplot.'''
 		a = input('b/n:')
+		if a == 'stop':
+			self.stop_message = a
 		print('you provided:',a)
 		self.handle_epoch_switch(a)
 		if a == 'exit' or a == 'q': 
@@ -659,13 +670,25 @@ class ac:
 			if be.visible:
 				visible_be.append(be)
 
+		if len(visible_be) == 0:
+			if move == 'next' or move == 'first':
+				self.jump_to_next_artifact()
+				self.select_artifact('first')
+				return 0
+			if move == 'back' or move == 'last':
+				self.jump_to_previous_artifact()
+				self.select_artifact('last')
+				return 0
+
 		visible_be.sort()
 		print(visible_be,'found epochs')
 		if self.artifact_selected == None or move == 'first':  
 			index = 0
 		elif move == 'last':
+			print('b')
 			index = -1
 		else:
+			print('c')
 			index = visible_be.index(self.artifact_selected)
 			if move == 'next':
 				index += 1
@@ -679,6 +702,7 @@ class ac:
 					self.jump_to_previous_artifact()
 					self.select_artifact('last')
 					return 0
+		# if len(visible_be) == 0:
 		self.artifact_selected = visible_be[index]
 		print(self.artifact_selected,'found artifact')
 		self.handle_plot(force_redraw=True)
@@ -731,6 +755,10 @@ class ac:
 		if event.key == ';': self.toggle_channel_mode(event)
 		if event.key == "'": self.toggle_channel_mode(event)
 		if event.key == 'y': self.toggle_complete_channel()
+		if event.key == 'backspace':
+			self.handle_save_xml(True)
+			self.stop_message = 'stop'
+			plt.close('all')
 		self.handle_plot()
 		self.handle_save_xml(force_save)
 		self.last_event_key = event
