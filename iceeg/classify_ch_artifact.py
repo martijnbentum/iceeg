@@ -1,6 +1,8 @@
 import copy
 import cnn_channel_data
 import cnn_ch_output_data as ccod
+import load_all_ort
+import glob
 import model_ch_cnn
 import model_ch_cnn_output as mcco
 import numpy as np
@@ -52,14 +54,16 @@ class classify_channel_artifact:
 		self.predicted = self.do.predicted
 
 
-	def generate_predicted(self, clean_up = True, save = True):
+	def generate_predicted(self, clean_up = True, save = True,load_model = True,load_predicted = False):
 		'''Classify eeg data on artifacts.'''
 		d = cnn_channel_data.cnn_data(1) # fold 1 was used for training, 10 fold training and testing was computationally to expensive
-		self.m = model_ch_cnn.load_model(path.model_channel + self.model_ch_cnn_name,d)
+		if load_model:
+			self.m = model_ch_cnn.load_model(path.model_channel + self.model_ch_cnn_name,d)
 		self.predicted_class, self.predicted_perc = self.m.predict_block(self.block, save = save)
-		# self.predicted = self.predicted_perc[:,1]
-		self.load_predicted()
-		self.m.clean_up()
+		if load_predicted:
+			self.load_predicted()
+		if clean_up:
+			self.m.clean_up()
 
 
 	def generate_predicted_adj(self, identifier = '', save = True):
@@ -125,5 +129,19 @@ def get_names_output_files(model_name = 'rep-3_perc-50_fold-2_part-90'):
 	names = [f.split('part-90_')[-1].split('_class.npy')[0] for f in fn]
 	return names
 
+def get_names_manually_annotated():
+	fn = glob.glob(path.channel_artifact_training_data + 'pp*exp*data.npy')
+	names = [f.split('/')[-1].rstrip('_data.npy') for f in fn]
+	print('found: ',len(names),' files')
+	return names
 
+def generate_predictions_manually_annotated(model_ch_cnn_name = None,fo =None):
+	if fo == None:
+		fo = load_all_ort.load_fid2ort()
+	names = get_names_manually_annotated()
+	for i,name in enumerate(names):
+		if model_ch_cnn_name != None:
+			c = classify_channel_artifact(name =name,fo=fo,model_ch_cnn_name = model_ch_cnn_name)
+			if i == 0: c.generate_predicted(clean_up = False)
+			else: c.generate_predicted(clean_up = False,load_model=False)
 
