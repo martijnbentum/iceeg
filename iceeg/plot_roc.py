@@ -1,18 +1,27 @@
 import glob
+import math
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib
 import numpy as np
 import os
 import path
+import random
+from scipy import optimize
 import time
 
 class cm_collection:
 	'''A class to collect all confusion_matrix objects and plot them.'''
-	def __init__(self,cm = [],load_all = True):
+	def __init__(self,cm = [],load_all = True, last_n = 50):
 		if cm != []: load_all = False
 		self.cm = cm
+		self.color_names = matplotlib.colors.cnames.keys()
 		self.perc2color = {'50':'blue','10':'green','25':'orange','40':'purple','5':'cyan'}
-		if load_all: self.load_all_cm()
+		if load_all: 
+			self.load_all_cm()
+			self.curve = True
+			try: self.curve_fit(last_n)
+			except: self.curve = False
 		self.set_perc_info()
 
 
@@ -29,6 +38,14 @@ class cm_collection:
 
 
 		for perc in self.percs:
+			if perc not in self.perc2color: 
+				i = 0
+				while 1:
+					color = random.sample(self.color_names,1)[0]
+					if color not in self.perc2color.values(): break
+					if i > len(self.color_names)*3:break
+					i +=1
+				self.perc2color[perc] = color
 			self.color_patch.append( mpatches.Patch(color=self.perc2color[perc], label=perc + '%') )
 
 	def load_all_cm(self):
@@ -67,9 +84,34 @@ class cm_collection:
 				cm.color = self.perc2color[cm.perc]
 			else: cm.color = 'grey'
 
+	def get_data(self,dtype = 'f1',last_n = 50):
+		'''get x and y data or curve fitting of variable.
+		dtype 		dependend variable for curve fitting, f1, recall, precision, mcc
+		'''
+		self.last_n = last_n
+		cms = [cm for cm in self.cm if cm.rep > 0]
+		cms.sort()
+		x = np.array([cm.true_part for cm in cms],dtype='float') /100
+		if len(x) > last_n: x = x[-last_n:]
+		y = [getattr(cm,dtype) for cm in cms][-last_n:]
+		return x,y
+
+	def curve_fit(self,last_n = 50):
+		for dtype in ['f1','recall','precision','mcc']:
+			print(dtype)
+			x,y = self.get_data(dtype,last_n)
+			self.x = x
+			setattr(self,'y_'+dtype, y)
+			popt, pcov = optimize.curve_fit(exp_expression,x,y,maxfev=10000)
+			setattr(self,dtype+'_popt',popt)
+			setattr(self,dtype + '_pcov',pcov) 
+			setattr(self,dtype+'_optimal',popt[0]) 
+
+
 	def plot(self, plot_type = 'roc', save = False):
 		'''Plot ROC / Precision-Recall / MCC for all cm objects.'''
 		self.find_last()
+		x = np.linspace(self.last_cm.true_part -self.last_n*10,self.last_cm.true_part *2,1000)
 		self.color_perc()
 		self.figure = plt.figure()
 		for cm in self.cm:
@@ -98,6 +140,10 @@ class cm_collection:
 			plt.ylabel('recall')
 			plt.title('ROC curve')
 		if plot_type == 'mcc':
+			if self.curve:
+				plt.plot(x,exp_expression(x/100,*self.mcc_popt),'b--',label='fit')
+				if self.mcc_optimal <= 1:
+					plt.plot(x[-1],self.mcc_optimal,color='b',marker='^')
 			plt.ylabel('mcc')
 			plt.xlabel('n parts training')
 			plt.title('Matthews correlation coefficient')
@@ -108,6 +154,16 @@ class cm_collection:
 			plt.xlabel('recall')
 			plt.title('Precision / Recall')
 		if plot_type == 'f':
+			if self.curve:
+				plt.plot(x,exp_expression(x/100,*self.f1_popt),color = 'purple',linestyle='--')
+				if self.f1_optimal <= 1:
+					plt.plot(x[-1],self.f1_optimal,color='purple',marker='^')
+				plt.plot(x,exp_expression(x/100,*self.recall_popt),'b--')
+				if self.recall_optimal <= 1:
+					plt.plot(x[-1],self.recall_optimal,color='b',marker='^')
+				plt.plot(x,exp_expression(x/100,*self.precision_popt),'r--')
+				if self.precision_optimal <= 1: 
+					plt.plot(x[-1],self.precision_optimal,color='r',marker='^')
 			plt.ylabel('score')
 			plt.xlabel('part')
 			plt.title('F1 - Precision - Recall')
@@ -170,6 +226,15 @@ class confusion_matrix:
 		m += 'precision\t' + str(self.precision)
 		m += 'confusion matrix\n' + np.array2string(self.cm)
 		m += '\n\n' + self.report
+
+
+	def __lt__(self,other):
+		# if hasattr(self,'start') and hasattr(other, 'start'):
+		return self.true_part < other.true_part
+
+	def __gt__(self,other):
+		# if hasattr(self,'start') and hasattr(other, 'start'):
+		return self.true_part > other.true_part
 		
 	def __repr__(self):
 		return 'cm object\tperc: ' + self.perc +'\tpart: ' + self.part +'\tkernel: '+self.kernel +'\tmcc: ' + str(round(self.mcc,2))
@@ -194,6 +259,7 @@ class confusion_matrix:
 			if 'kernel' in item: self.kernel= item.split('model')[0].split('-')[-1]
 			if 'model' in item: self.model= item.split('model')[-1]
 			if 'rep' in item: self.rep = int(item.split('-')[-1]) -1
+		self.true_part = self.rep *90 + int(self.part)
 
 
 	def plot_roc(self,figure = None, alpha = 1,markersize = 10):
@@ -277,3 +343,9 @@ def matthews_correlation_coefficient(cm):
 	else:denominator = ((tp+fp) * (tp+fn) * (tn+fp) * (tn+fn)) ** 0.5
 	# print(numerator, denominator,tp,tn,fp,fn)
 	return numerator/denominator
+
+def exp_expression(x,a,b,c):
+	'''a,b,c should be adjusted to minimize the output of the function given x.
+	'''
+	vexp = np.vectorize(math.exp)
+	return a - b * vexp(-c*x)
