@@ -2,6 +2,7 @@ import bad_epoch
 import check_artifact_length as cal
 import copy
 import experiment as e
+import glob
 from lxml import etree
 # from matplotlib import pyplot as plt
 import numpy as np
@@ -18,7 +19,7 @@ class xml_cnn:
 	IMPORTANT: block start sample are the sample numbers in sf1000, snippet indices are in sf100
 	bad epoch st and et sample are in sf 1000 WIP
 	'''
-	def __init__(self,b=None,cnn_model_name = 'rep-3_perc-50_fold-2_part-90',save_dir = None,bad_epochs = [],filename = '', load_predictions = True):
+	def __init__(self,b=None,cnn_model_name = 'rep-3_perc-50_fold-2_part-90',save_dir = None,bad_epochs = [],filename = '', load_predictions = True, use_corrected = True):
 		'''Writes artifact info generated with manual_artifact_coder to xml files
 
 		w 			windower object
@@ -26,6 +27,8 @@ class xml_cnn:
 		save_dir 	directory to save data 
 		bad_epochs 	a list of bad_epoch objects, can be empty
 		filename 	xml filename, for loading or writing
+		use_cor... 	whether to use the xml that is based on automatic cnn annotation and manually 
+					corrected, if no such file exists it will revert to the auto file
 		'''
 		self.b=b 
 		self.cnn_model_name = cnn_model_name
@@ -37,7 +40,7 @@ class xml_cnn:
 		if self.b !=None:
 			self.w = windower.Windower(b,sf = 100)
 			self.name = windower.make_name(self.b)
-			self.filename = make_filename(self.w,self.cnn_model_name)
+			self.filename = make_filename(self.w,self.cnn_model_name, use_corrected)
 			if load_predictions: self.load_predictions()
 			else: self.loaded = False
 			if self.loaded: self.set_indices()
@@ -269,8 +272,15 @@ class xml_cnn:
 '''
 
 	
-def make_filename(w, model_name):
-	return path.artifact_cnn_xml + model_name + '_' + w.name+ '.xml'
+def make_filename(w, model_name,use_corrected):
+	if use_corrected:
+		fn = glob.glob(path.corrected_artifact_cnn_xml + '*' +w.name + '.xml')
+		if len(fn) == 1: return fn[0]
+		else:
+			print('Could not find corrected file, will use automatically generated file.''')
+			use_corrected = False
+	if not use_corrected:
+		return path.artifact_cnn_xml + model_name + '_' + w.name+ '.xml'
 
 def get_cnn_epoch_id(increment = False):
 	'''Read and optionally increment cnn epoch id for the bad epoch generated based on cnn predictions.'''
