@@ -1,6 +1,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler as bs
 import glob
 import mail
+import listen_mail
 import os
 import path
 import plot_roc
@@ -13,18 +14,23 @@ class report_sender():
 	monitors cpu and ram to check whether pc is still training (pc ok works, does not seem to
 	send a notification when it fails.
 	'''
-	def __init__(self,target_dir = '/Volumes/Bigstorage/BAK/MODEL_CHANNEL/',check_interval = 60,recipients = 'bentummartijn@gmail.com'):
+	def __init__(self,target_dir = '/Volumes/Bigstorage/BAK/MODEL_CHANNEL/',check_interval = 60,recipients = 'bentummartijn@gmail.com',last_n=80):
 		'''create send report object to monitor model training and pc statistics.
 
 		target_dir 		directory to monitor
 		check_interval 	time between pc monitoring and report (model evaluation) monitoring
 		recipients 		email adresses to send reports to
+		last_n 			last n samples to do curve fitting on
 		'''
+		self.perc_message = ''
+		self.epoch = 0
 		self.target_dir = target_dir
 		self.check_interval = check_interval
+		self.last_perc_mail_check = 0
 		self.fn = []
 		self.start = time.time()
 		self.recipients = recipients
+		self.last_n = last_n
 		self.reports = []
 		self.mem_to_low = False
 		self.cpu_to_low = False
@@ -52,6 +58,8 @@ class report_sender():
 				self.check_new_reports()
 			if time.time() - self.last_monitor> self.monitor_job:
 				self.monitor_computer()
+			if time.time() - self.last_perc_mail_check > 300:
+				self.check_perc_mail()
 			time.sleep(30)
 
 
@@ -77,6 +85,25 @@ class report_sender():
 		print('remaining recipients:', self.recipients)
 
 
+	def check_perc_mail(self):
+		self.last_perc_mail_check = time.time()
+		# try: 
+		self.last_mail = listen_mail.get_last_mail('setpercnow')
+		perc = float(self.last_mail['snippet'])
+		d,t,epoch = listen_mail.get_d_t_epoch(self.last_mail['payload'])
+		if self.epoch == epoch: 
+			print('old message')
+			return 0
+		if 0.5 > perc > 0.04: 
+			self.epoch = epoch
+			self.perc = perc
+			self.perc_message = 'latest perc: ' + str(self.perc) + ' set at: ' + d
+			fout = open(path.data + 'perc_artifact','w')
+			fout.write(str(self.perc))
+			fout.close()
+			mail.mail(self.perc_message,subject ='percentage is set: '+str(perc))
+		else: print('perc outside range: ',perc)
+		# except: print('error occured')
 
 	def check_new_reports(self):
 		'''Check whether a new model evaluation report is present in the target directory.'''
@@ -84,18 +111,19 @@ class report_sender():
 		fn = glob.glob(self.target_dir + '*report*')
 		last_10_acc = '\n\nLast 10 accuracy test 50/50, artifact/clean:\n\n'
 		last_10_acc += '\n'.join(open(path.data +'test_output.txt').read().split('\n')[::-1][:11])
+		new_report = False
 		for f in fn:
 			if f not in self.fn:
 				self.fn.append(f)
 				if not self.first_run:
-					cmc = plot_roc.cm_collection()
+					cmc = plot_roc.cm_collection(last_n = self.last_n)
 					cmc.plot(plot_type = 'roc',save = True)
 					cmc.plot(plot_type = 'mcc',save = True)
 					cmc.plot(plot_type = 'pr',save = True)
 					cmc.plot(plot_type = 'f',save = True)
 					self.reports.append(open(f).read())
 					subject = ' '.join(f.split('_')[2:-2])
-					message = self.reports[-1] + '\n\n' + last_10_acc + '\n\n'
+					message = self.reports[-1]+'\n\n'+last_10_acc+'\n' + self.perc_message +'\n\n'
 					mail.mail(message,subject = subject, to = self.recipients,attach = 'roc.png,mcc.png,pr.png,f.png')
 					time.sleep(10)
 		self.first_run = False
