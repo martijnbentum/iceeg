@@ -52,7 +52,7 @@ def mail(message_text = 'default', sender= 'bentummartijn@gmail.com', to='bentum
 
 def get_service():
 	'''Loads the credentials to interact with the gmail api.'''
-	store = file.Storage('MAIL/credentials.json')
+	store = file.Storage('MAIL/send_credentials.json')
 	creds = store.get()
 	service = build('gmail', 'v1', http=creds.authorize(Http()))
 	return service
