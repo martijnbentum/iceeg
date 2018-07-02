@@ -57,7 +57,7 @@ class classify_channel_artifact:
 	def generate_predicted(self, clean_up = True, save = True,load_model = True,load_predicted = False):
 		'''Classify eeg data on artifacts.'''
 		d = cnn_channel_data.cnn_data(1) # fold 1 was used for training, 10 fold training and testing was computationally to expensive
-		if load_model:
+		if load_model or not hasattr(self,'m'):
 			self.m = model_ch_cnn.load_model(path.model_channel + self.model_ch_cnn_name,d)
 		self.predicted_class, self.predicted_perc = self.m.predict_block(self.block, save = save)
 		if load_predicted:
@@ -135,7 +135,28 @@ def get_names_manually_annotated():
 	print('found: ',len(names),' files')
 	return names
 
+def get_names_blocks():
+	fn = glob.glob(path.eeg100hz + 'pp*.npy')
+	names = [f.split('/')[-1].rstrip('.npy') for f in fn]
+	print('found: ',len(names),' files')
+	return names
+
+def remove_present_names(names):
+	output = []
+	present_names = glob.glob(path.channel_snippet_annotation + '*')
+	for name in names:
+		found = False
+		for present_name in present_names:
+			if name in present_name:
+				found = True
+		if not found:
+			output.append(name)
+	print('nfiles to be classified:',len(output),'out of:',len(names),'total')
+	return output
+
 def generate_predictions_manually_annotated(model_ch_cnn_name = None,fo =None):
+	'''Classify clean artifact for all blocks that are manually annotated.
+	Predictions are save in the path.channel_snippet_annotation directory.'''
 	if fo == None:
 		fo = load_all_ort.load_fid2ort()
 	names = get_names_manually_annotated()
@@ -145,3 +166,21 @@ def generate_predictions_manually_annotated(model_ch_cnn_name = None,fo =None):
 			if i == 0: c.generate_predicted(clean_up = False)
 			else: c.generate_predicted(clean_up = False,load_model=False)
 
+
+def generate_predictions_all_blocks(model_ch_cnn_name = None,fo=None,skip_present = True):
+	'''Classify clean artifact for all blocks 
+	Predictions are save in the path.channel_snippet_annotation directory.
+
+	model_ch_cnn_name 	 	name of the cnn artifact model
+	fo 						object to faster load blocks see load_all_ort 
+	skip_present 			skip files that are already classified and present the dir
+	'''
+	if fo == None:
+		fo = load_all_ort.load_fid2ort()
+	names = get_names_blocks()
+	if skip_present: names = remove_present_names(names)
+	for i,name in enumerate(names):
+		if model_ch_cnn_name != None:
+			c = classify_channel_artifact(name =name,fo=fo,model_ch_cnn_name = model_ch_cnn_name)
+			if i == 0: c.generate_predicted()
+			else: c.generate_predicted()
