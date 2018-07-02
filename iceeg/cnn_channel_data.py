@@ -107,18 +107,20 @@ class cnn_data:
 		setattr(self,name+ '_nclean' , len(getattr(self,name + '_clean_sample_indices'))) 
 
 
-	def load_next_training_part(self,remove_testing_data= True):
+	def load_next_training_part(self,remove_testing_data= True, random_pick = False):
 		'''Load the next artifact and clean data files for training.
 		files where split into parts to decrease size per file.
 
 		remove_testing_data 	removes the test data if present to free up RAM
 		'''
-		if not hasattr(self,'current_part_index'): self.current_part_index = 0
+		if random_pick: self.current_part_index = random.sample(range(self.ntrain_data_filenames),1)[0]
+		elif not hasattr(self,'current_part_index'): self.current_part_index = 0
 		elif self.current_part_index >= len(self.train_data_filenames)-1:
 			print('Already at last index, no more training files.')
 			return False
 		else: 
 			self.current_part_index +=1
+
 		self.part = self.current_part_index + 1
 
 		if remove_testing_data and hasattr(self,'test_data'):
@@ -133,6 +135,7 @@ class cnn_data:
 
 		self.set_clean_artifact_indices(name = 'train')
 		print('loaded next training files',self.train_data_filename,self.train_info_filename)
+		if random: print('loaded a random training file.')
 		return True
 
 
@@ -148,7 +151,7 @@ class cnn_data:
 		self.set_clean_artifact_indices(name = 'smalltest')
 
 
-	def load_next_test_part(self,remove_training_data = True):
+	def load_next_test_part(self,remove_training_data = True,load_next = True,loop_test_files= False):
 		'''Load the next artifact and clean data files for testing.
 		files where split into parts to decrease size per file.
 		'''
@@ -158,6 +161,7 @@ class cnn_data:
 		elif self.current_test_part_index >= len(self.test_data_filenames)-1:
 			print('Already at test last index, no more test files.')
 			return False
+		elif not load_next: print('keeping test part at:',self.current_test_part_index+1,'the index is at:',self.current_test_part_index)
 		else: 
 			self.current_test_part_index +=1
 			print('Testing part:',self.current_test_part_index + 1,'setting current_test_part_index to:',self.current_test_part_index)
