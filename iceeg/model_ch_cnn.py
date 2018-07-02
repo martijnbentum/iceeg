@@ -153,7 +153,7 @@ class model_channel_artifact:
 		fout.close()
 
 
-	def eval_test_set(self,load_next_test_part = True, batch_size=1200,save = False,identifier = '',subset = True):
+	def eval_test_set(self,load_next_test_part = True, batch_size=1200,save = False,identifier = '',subset = True,next_test_file =True, loop_test_files = False):
 		'''Evaluate a test set, artifact and clean data is loaded and test seperately.
 		the test sets are loaded in the cnn_data object according to 10 fold cross validation, each fold
 		is divided in multiple parts due to data size, one part is loaded per evaluation.
@@ -166,7 +166,7 @@ class model_channel_artifact:
 						cuts down 4 M to 1 M of samples
 		'''
 		if load_next_test_part: 
-			loaded = self.data.load_next_test_part()
+			loaded = self.data.load_next_test_part(load_next = next_test_file, loop_test_files= loop_test_files)
 			if not loaded: return False
 
 		data =getattr(self.data,'test_data')
@@ -235,7 +235,8 @@ class model_channel_artifact:
 
 		identifier 		string to be prepended to the filename
 		'''
-		part = str(self.data.current_part_index + 1)
+		if hasattr(self,'part'): part = str(self.part)
+		else:part = str(self.data.current_part_index + 1)
 		test_part = str(self.data.current_test_part_index + 1)
 		fold = str(self.data.fold)
 		perc_artifact = str(int(self.perc_artifact *100))
@@ -312,7 +313,8 @@ class model_channel_artifact:
 
 
 	def make_model_name(self, identifier = ''):
-		part = str(self.data.current_part_index + 1)
+		if hasattr(self,'part'): part = str(self.part)
+		else:part = str(self.data.current_part_index + 1)
 		fold = str(self.data.fold)
 		kernel = str(self.kernel_size)
 		model = self.model_name
@@ -324,11 +326,80 @@ class model_channel_artifact:
 		'''Load a previously trained model by name and return model object.
 		'''
 		self.make_model_name(identifier = identifier)
+		print('saving model:',self.filename_model)
 		saver = tf.train.Saver()
 		saver.save(self.sess,self.filename_model,write_meta_graph=False)
 		# ma.initialize()
 
 
+	def set_perc_artifact(self):
+		try: 
+			print( 'current ratio artifact clean:', self.perc_artifact,' loading ratio...')
+			perc_artifact = float(open(path.data + 'perc_artifact').read())
+			if 1 > perc_artifact > 0:
+				self.perc_artifact = perc_artifact
+				print( 'current ratio artifact clean:', self.perc_artifact,' ratio succesfully loaded.')
+			else:
+				print('ratio artifact clean must be between 0-1, new setting:')
+				print(perc_artifact, ' is ignored')
+		except: print('could not load artifact clean ratio, still is:', self.perc_artifact)
+
+
+	def handle_training(self,save_every_nsteps=10, evaluate = True, identifier = '',ntrain = 1000, read_in_artifact_perc = True, rep = 15, dry_run = False, start_part = 1,next_test_file= False,loop_test_files = True):
+		'''Train model on randomly picked training part.
+
+		save_every_nsteps 		save model after n training parts
+		evaluate 				whether to evaluate the model 
+		identifier 				name prepended to model name
+		ntrain 					number of training cycles per part (200 samples trained per cycle)
+		read_in_artifact_perc 	whether to change artifact clean ratio based on artifact_perc file
+		rep 					number of times the model has trained on all training data
+		dry_run 				debugging
+		start_part 				part number in the rep (90 parts for 1 rep)
+		next_test_file 			whether to test on all test files ( or 1)
+		loop_test_files 		(only relevant for next_test_file = True), start at
+								first test file when all are tested
+		'''
+		self.part = start_part # to keep count how many part were trained
+		add_on = identifier
+		identifier = 'rep-'+str(rep)+'_'+add_on
+		keep_on_training = 'yes'
+		train_now = True
+
+		while 1:
+			if self.part > 90:  
+				try: keep_on_training = open(path.data +'keep_channel_training').read().strip()
+				except: print('failed to read keep on training, will keep training')
+				print('keep training:',[keep_on_training])
+				if keep_on_training == 'stop':
+					print('will stop training, currently at:',self.part-1,rep)
+					if hasattr(self,'filename_model'):
+						print('last model name:',self.filename_model)
+					break
+				if keep_on_training == 'no': train_now = False
+				else:	
+					self.part = 1
+					rep += 1
+					identifier = 'rep-'+str(rep)+'_'+add_on
+					train_now = True
+
+			if train_now:
+				self.set_perc_artifact()
+				if not dry_run: 
+					loaded = self.data.load_next_training_part(random_pick = True)
+					self.train(ntrain)
+					if self.part % save_every_nsteps == 0:
+						self.save_model(identifier)
+						self.eval_test_set(save = True, identifier = identifier,next_test_file= next_test_file, loop_test_files = loop_test_files)
+				else: print('not training, this is a dry run.')
+				if dry_run and rep > 1000: 
+					print('rep:',rep,'stopping dry run.')
+					break
+				print('part:',self.part,'rep:',rep)
+				self.part += 1
+			else: time.sleep(60)
+		
+		
 	def handle_folds(self,start_part = 1,save_every_nsteps = 10,evaluate = True,identifier = '',nparts ='all', ntrain = 1000):
 		'''Train model on a specific fold (ordering of training and test files) and train them on some of all of these files.
 		start_part 		the part to start training on
