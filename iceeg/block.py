@@ -214,15 +214,15 @@ class block:
 		return d
 		
 
-	def load_artifacts(self):
+	def load_artifacts(self,use_corrected = True):
 		'''Loads automatically generated artifact annotations.
 		WIP: extend to be able to specify which annotation type to load (manual / automatic)
 		'''
 		try:
-			self.xml = xml_cnn.xml_cnn(self)
+			self.xml = xml_cnn.xml_cnn(self, use_corrected = use_corrected)
 			self.xml.load()
 			# self.xml.xml2bad_epochs()
-			self.artifacts = [a for a in self.xml.artifacts if a.annotation == 'artifact']
+			self.artifacts = [a for a in self.xml.artifacts if a.annotation == 'artifact' and a.correct != 'incorrect']
 			self.nartifacts = len(self.artifacts)
 			self.start_artifacts = [a.st_sample/1000 for a in self.artifacts]
 			self.duration_artifacts = [a.duration/1000 for a in self.artifacts]
@@ -234,33 +234,84 @@ class block:
 			self.total_duration,self.total_artifact_duration,self.artifact_perc, self.nartifacts = 0,0,0,0
 
 
-	def fit_ica(self):
+	def fit_ica(self,use_corrected = True, both_reject_all = True):
 		'''Fit ica on block object.
 		EEG data is bandpassed filtered on 1-30 Hz, the ica solution can be used on data
 		without or different bandpass filter see:
 		Winkler et al.
 		On the influence of high-pass filtering on ICA-based artifact reduction in EEG-ERP
 		WIP: extend to be able to set ica approach (with or without artifact rejection, filename)
+		
+		use_corrected 		whether to use the corrected xml files (based on cnn classification)
+		both_reject_all 	whether to fit ica with and without rejected artifacts
 		'''
+		self.use_corrected = use_corrected
+		self.load_artifacts(use_corrected)
 		if not self.eeg_loaded: 
 			try:self.load_eeg_data(freq = [1,30])
 			except: return 0
 		self.ica = ica.ICA()
 		self.ica_e = ica.ICA()
+		self.eog_comp_e,self.eog_scores_e = [],[]
+		self.eog_comp,self.eog_scores = [],[]
 		if self.artifacts != 'NA':
+			print('Setting artefact annotation to mne format')
 			self.raw.annotations = mne.Annotations(self.start_artifacts,self.duration_artifacts,'BAD')
-		self.ica.fit(self.raw,reject_by_annotation = False)
-		self.eog_comp, self.eog_scores = self.ica.find_bads_eog(self.raw,reject_by_annotation = False)
-		self.ica.save(path.ica_solutions + windower.make_name(self) + '_all-data-ica.fif')
-
-		if self.artifacts != 'NA':
+			print('Excluding artefacts and fitting ica')
 			self.ica_e.fit(self.raw,reject_by_annotation = True)
 			self.eog_comp_e, self.eog_scores_e = self.ica_e.find_bads_eog(self.raw,reject_by_annotation = False)
-			self.ica_e.save(path.ica_solutions + windower.make_name(self) + '_no-artifact-ica.fif')
-		else: self.eog_comp_e,self.eog_scores_e = self.eog_comp, self.eog_scores
+			if self.use_corrected: identifier = '_corrected_no-artifact-ica.fif'
+			else: identifier = '_no-artifact-ica.fif'
+			self.ica_e.save(path.ica_solutions + windower.make_name(self) + identifier)
+		if self.artifacts == "NA" or both_reject_all:
+			self.ica.fit(self.raw,reject_by_annotation = False)
+			self.eog_comp, self.eog_scores = self.ica.find_bads_eog(self.raw,reject_by_annotation = False)
+			self.ica.save(path.ica_solutions + windower.make_name(self) + '_all-data-ica.fif')
+
+		
 		
 		self.write_eog()
 
+	def load_ica(self,use_corrected = True, rejected_artifacts = True):
+		self.ica_use_corrected = use_corrected
+		self.ica_rejected_artifacts = rejected_artifacts
+		name = windower.make_name(self)
+		if use_corrected: self.ica_filename = name +'_corrected_no-artifact-ica.fif'
+		else: self.ica_filename = name + '_no-artifact-ica.fif'
+		if not rejected_artifacts: self.ica_filename = name + '_all-data-ica.fif'
+			
+		self.ica = mne.preprocessing.read_ica(path.ica_solutions + self.ica_filename) 
+		loaded = self.read_eog() #not all eog corr are present
+		if not loaded:
+			if not hasattr(self,'raw'): self.load_eeg_data()
+			self.eog_comp, self.eog_scores = self.ica.find_bads_eog(self.raw,reject_by_annotation = False)
+			self.eog = eog.eog(scores = self.eog_scores, comps= self.eog_comp,b = self, ica_filename = self.ica_filename, filename = self.ica_filename.replace('ica.fif','eog.xml'))
+			self.eog.write()
+		
+		
+	def plot_ica(self, ncomponents = 25):
+		if not hasattr(self,'ica'): self.load_ica()
+		self.ica_plot = self.ica.plot_components(range(ncomponents))
+		self.veog_scores_str = list(map(str,list(self.eog_scores[0].round(2))))
+		self.heog_scores_str = list(map(str,list(self.eog_scores[1].round(2))))
+		for i,subplot in enumerate(self.ica_plot.axes):
+			color = 'green'
+			veog,heog = self.veog_scores_str[i], self.heog_scores_str[i]
+			if abs(float(veog)) < .3: veog_color = 'grey'
+			if abs(float(heog)) < .3: color = 'grey'
+			subplot.text(x=-0.65,y=-0.7,s=veog,color = color,alpha = abs(float(veog)),size =15)
+			subplot.text(x=0.15,y=-0.7,s=heog,color = color,alpha = abs(float(heog)),size =15)
+			if i in self.eog_comp:
+				if abs(self.eog_scores[0][i]) > abs(self.eog_scores[1][i]): marker,size = '*',18
+				else: marker,size = '<',12
+				subplot.plot(.4,.5,marker=marker,color = 'orangered',markersize=size)
+					
+	def read_eog(self):
+		filename = path.ica_solutions + 'EOG/' + self.ica_filename.replace('ica.fif','eog.xml')
+		if os.path.isfile():
+			self.eog = eog.read_eog(filename)
+			return True
+		return False
 
 	def write_eog(self):
 		'''Write text file with correlation between eog channels and ic from ica solution.
@@ -270,17 +321,23 @@ class block:
 		'''
 		if self.artifacts == 'NA': xml_ok = 'xml_absent'
 		else: xml_ok = 'xml_present'
-		eog = ','.join(map(str,self.eog_comp))
-		veog_scores = ','.join([str(self.eog_scores[0][i]) for i in self.eog_comp])
-		heog_scores = ','.join([str(self.eog_scores[1][i]) for i in self.eog_comp])
+		if self.eog_comp == []: eog,veog_scores,heog_scores = 'NA','NA','NA'
+		else:
+			eog = ','.join(map(str,self.eog_comp))
+			veog_scores = ','.join([str(self.eog_scores[0][i]) for i in self.eog_comp])
+			heog_scores = ','.join([str(self.eog_scores[1][i]) for i in self.eog_comp])
 
-		eog_e = ','.join(map(str,self.eog_comp_e))
-		veog_scores_e = ','.join([str(self.eog_scores_e[0][i]) for i in self.eog_comp_e])
-		heog_scores_e = ','.join([str(self.eog_scores_e[1][i]) for i in self.eog_comp_e])
+		if self.eog_comp_e == []: eog_e,veog_scores_e,heog_scores_e = 'NA','NA','NA'
+		else:
+			eog_e = ','.join(map(str,self.eog_comp_e))
+			veog_scores_e = ','.join([str(self.eog_scores_e[0][i]) for i in self.eog_comp_e])
+			heog_scores_e = ','.join([str(self.eog_scores_e[1][i]) for i in self.eog_comp_e])
 
 		output = '\t'.join([eog,veog_scores,heog_scores,eog_e,veog_scores_e,heog_scores_e,xml_ok,str(self.artifact_perc)])
 
-		fout = open(path.ica_solutions + windower.make_name(self) + '_eog.txt','w')
+		if self.use_corrected:identifier = '_corrected_eog.txt'
+		else: identifier = '_eog.txt'
+		fout = open(path.ica_solutions + 'EOG/'+windower.make_name(self) + identifier,'w')
 		fout.write(output)
 		fout.close()
 
