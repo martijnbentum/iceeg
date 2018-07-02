@@ -3,7 +3,8 @@ import bad_epoch
 import copy
 import glob
 from matplotlib import pyplot as plt
-import notes
+try: import notes
+except: print('could not import notes, probably not wx')
 import numpy as np
 import os
 import path
