@@ -9,7 +9,8 @@ from matplotlib import pyplot as plt
 import os
 import time
 import windower
-import wx
+try: import wx
+except: print('could not load wx')
 import xml_notes
 
 class note():
