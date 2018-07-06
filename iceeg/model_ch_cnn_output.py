@@ -25,7 +25,7 @@ import tensorflow as tf
 class model_cnn_output:
 	'''Train a convolution neural network on EEG data slices of 1 second (sf=100), labelled for artifacts.'''
 
-	def __init__(self,data,batch_size = 200,nsamples= 201,perc_artifact= .93,gradient_descent_opt= 0.01,hamming=False,tf_version = '1.2.1'):
+	def __init__(self,data,batch_size = 200,nsamples= 301,perc_artifact= .9,gradient_descent_opt= 0.01,hamming=False,tf_version = '1.2.1'):
 		'''Create object to train CNN on EEG data slices, for an artifact classifier.
 
 		data 			np matrix with eeg data, each rows contains 2400 data point, 24 channels with 100 dp each -> 1second
@@ -148,13 +148,16 @@ class model_cnn_output:
 		identifier 		string to be prepended to the filename
 		'''
 		perc_artifact = str(int(self.perc_artifact *100))
-		eval_name = path.cnn_output_data+'cnn_outputdata_' + identifier + 'evaluation_perc-'+perc_artifact 
-		cm_name= path.data+'cnn_outputdata_'+ identifier + 'evaluation_perc-'+perc_artifact
+		eval_name = path.channel_cnn_output_data+'rep-'+str(self.rep)+'_cnn_outputdata_' + identifier + 'evaluation_perc-'+perc_artifact 
+		cm_name= path.data+'channel_cnn_outputdata_'+ identifier + 'evaluation_perc-'+perc_artifact
 		print('saving evaluation:',eval_name)
 		np.save(eval_name + '_gt',self.ground_truth)
 		np.save(eval_name + '_predicted',self.predicted)
 		np.save(eval_name + '_cm',self.confusion_matrix)
 		np.save(cm_name+ '_cm',self.confusion_matrix)
+		fout = open(eval_name + '_report.txt','w')
+		fout.write(self.report)
+		fout.close()
 		
 
 	def compute_prediction_perc(self,data, batch_size = 800):
@@ -193,7 +196,7 @@ class model_cnn_output:
 
 	def make_model_name(self, identifier = ''):
 		perc_artifact = str(int(self.perc_artifact *100))
-		self.filename_model = path.cnn_output_data + 'cnn_output_model_'+ identifier +'perc-'+perc_artifact
+		self.filename_model = path.model_channel + 'rep-'+str(self.rep)+'_cnn_output_model_'+ identifier +'perc-'+perc_artifact
 
 
 	def save_model(self,identifier = ''):
@@ -204,6 +207,22 @@ class model_cnn_output:
 		saver.save(self.sess,self.filename_model)
 		# ma.initialize()
 
+	def handle_parts(self,randomize_order = True, nparts = 50, ntrain = 500000,eval_every = 10,identifier = ''):
+		self.rep = 1
+		for part in range(nparts):
+			print('will train:',nparts,'currently at:',part+1)
+			if part > 0:
+				if randomize_order:
+					self.data.load_next_training_part(index = random.randint(0,8))
+				else: self.data.load_next_training_part()
+			self.train(ntrain)
+			if part != 0 and part % eval_every == 0:
+				self.rep += 1
+				self.save_model(identifier)
+				self.eval_test_set(save = True, identifier = identifier)
+		
+	
+	
 
 			
 def handle_artifact_percs(m,artifact_percs = [0.99,0.98,0.97,0.96,0.95,0.94,0.93,0.92,0.91,0.9,0.75,0.5],identifier = 'perc_comparison',ntrain = 500000):
@@ -272,7 +291,7 @@ def hamming_data(d,window_length):
 	return d * hamming
 
 
-def next_batch_ratio(d, name = 'train',perc_artifacts =.5, nsamples = 200, hamming = False,window_length = 201):
+def next_batch_ratio(d, name = 'train',perc_artifacts =.5, nsamples = 200, hamming = False,window_length = 301):
 	'''Create a batch of nsmamples randomly drawn rows with a ratio clean/artifact 
 	defined by perc_artifact.'''
 	nartifact, nclean = samplen_artifact_clean(nsamples,perc_artifacts)
