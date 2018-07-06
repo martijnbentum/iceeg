@@ -65,16 +65,39 @@ class Bad_channel(bad_epoch.Bad_epoch):
 		if hasattr(self,'start') and hasattr(other, 'start'):
 			return self.start > other.start
 			
+	def fake_hash(self):
+		return self.channel + '_' + str(self.epoch_id)
 
-	def plot(self,channel_data,offset = None):
+	def plot(self,channel_data,offset = None, color = None):
 		'''plot start / end boundary object add transparent color over time window and plot annotation epoch id.'''
 		if offset == None: offset = self.offset
 		if not self.visible: return 0
 		if self.ok and not self.plotted:
+			if color != None:
+				plt.plot(range(self.start.x,self.end.x,1), np.zeros(channel_data[self.start.x:self.end.x].shape)-75,alpha = 0.8, color = color, linestyle= self.linestyle,linewidth =10)
+				plt.plot(range(self.start.x,self.end.x,1),np.zeros(channel_data[self.start.x:self.end.x].shape)+ 1075,alpha = 0.8, color = color, linestyle= self.linestyle,linewidth =10)
+				plt.plot(range(self.start.x,self.end.x,1), channel_data[self.start.x:self.end.x] + offset,alpha = 0.8, color = color, linestyle= self.linestyle,linewidth =3)
+				self.plot_annotation()
+			else:
+				if self.correct == 'correct':
+					color = self.color
+				else:
+					color = 'grey'
 				# plt.axvspan(self.start.x,self.end.x, facecolor = self.color, alpha = 0.1) 
 				plt.plot(range(self.start.x,self.end.x,1), channel_data[self.start.x:self.end.x] + offset,color = 'white')
-				plt.plot(range(self.start.x,self.end.x,1), channel_data[self.start.x:self.end.x] + offset,alpha = self.alpha, color = self.color, linestyle= self.linestyle,linewidth =6)
+				plt.plot(range(self.start.x,self.end.x,1), channel_data[self.start.x:self.end.x] + offset,alpha = self.alpha, color = color, linestyle= self.linestyle,linewidth =6)
 
+	def plot_annotation(self,plot_correct = True):
+		'''Plot the annotation to the plot window.'''
+		ylow,yhigh = plt.ylim()
+		if self.ok:
+			center = (self.st_sample + self.et_sample) / 2
+			if self.correct == 'correct':
+				plt.annotate('V', xy=(self.st_sample, ylow+30), color = 'green',fontsize=20)
+				plt.annotate('V', xy=(self.et_sample - 50, ylow+30), color = 'green',fontsize=20)
+			if self.correct == 'incorrect':
+				plt.annotate('X', xy=(self.st_sample, ylow+30), color = 'red',fontsize=20)
+				plt.annotate('X', xy=(self.et_sample - 50, ylow+30), color = 'red',fontsize=20)
 
 	def set_complete_replot(self):
 		'''Set flag to replot epoch (if something changed, e.g. boundary is deleted).'''
