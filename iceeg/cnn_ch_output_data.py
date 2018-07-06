@@ -8,6 +8,7 @@ import plot_roc
 import progressbar as pb
 import random
 import sklearn.metrics
+import utils
 import windower
 
 #adapted from cnn_output_data
@@ -17,45 +18,32 @@ class cnn_ch_output_data:
 	It presupposes that train and test files are generated based on model_ch_cnn output for each block
 	These files can be created with cnn_channel_output2data class
 	'''
-	def __init__(self):
+	def __init__(self,part= 1):
 		'''Initialize data object that handles loading of training and test files for cnn ch output data training.
 		the dataset is created with functions in cnn_channel_output2data class
 		'''
-		self.train_data_filename = path.channel_cnn_output_data +'train_data.npy'
-		self.train_info_filename = path.channel_cnn_output_data +'train_info.npy'
-		self.test_data_filename = path.channel_cnn_output_data + 'test_data.npy'
-		self.test_info_filename = path.channel_cnn_output_data +'test_info.npy'
+		if part == 0: self.part = 1
+		else: self.part = part
+		self.index = self.part -1
+			
+		self.train_data_filenames = [path.channel_cnn_output_data +'PART_INDICES/data_part-'+str(i)+'.npy' for i in range(1,10)]
+		self.train_info_filenames = [path.channel_cnn_output_data +'PART_INDICES/info_part-'+str(i)+'.npy' for i in range(1,10)]
+		self.test_data_filename = path.channel_cnn_output_data + 'PART_INDICES/data_part-10.npy'
+		self.test_info_filename = path.channel_cnn_output_data +'PART_INDICES/info_part-10.npy'
 
-		# data is flattened: rowsXwindow_length, rows corresponds with a model_ch_cnn 
-		# channel specific sample (a sample is 1sec window).
-		# channel specific whether a 1 sec window is an artiact depends on which channels is in focus.
-		self.train_data = np.load(self.train_data_filename)
-		self.train_info = np.load(self.train_info_filename)
+		self.train_data = np.load(self.train_data_filenames[self.index])
+		self.train_info = np.load(self.train_info_filenames[self.index])
 		self.test_data = np.load(self.test_data_filename)
 		self.test_info = np.load(self.test_info_filename)
 
-		self.smalltest_data= self.test_data[:1500,:]
-		self.smalltest_info= self.test_info[:1500]
+		self.smalltest_data= self.test_data[:10000,:]
+		self.smalltest_info= self.test_info[:10000]
 
 		self.ntrain = self.train_info.shape[0]
 		self.ntest = self.test_info.shape[0]
 		self.nsmalltest = self.smalltest_info.shape[0]
+		self.create_clean_artifact_indices()
 
-		# create set of indices for clean and artifact samples for train test and smalltest datasets
-		self.train_artifact_indices = np.where(self.train_info >= .5)[0]
-		self.train_clean_indices = np.where(self.train_info < .5)[0]
-		self.test_artifact_indices = np.where(self.train_info >= .5)[0]
-		self.test_clean_indices = np.where(self.train_info < .5)[0]
-		self.smalltest_artifact_indices = np.where(self.smalltest_info >= .5)[0]
-		self.smalltest_clean_indices = np.where(self.smalltest_info < .5)[0]
-
-		self.ntrain_artifact = sum(self.train_info)
-		self.ntest_artifact = sum(self.test_info)
-		self.ntrain_clean = self.ntrain - self.ntrain_artifact
-		self.ntest_clean = self.ntest - self.ntest_artifact
-
-		self.nsmalltest_artifact = sum(self.smalltest_info)
-		self.nsmalltest_clean = self.nsmalltest - self.nsmalltest_artifact
 
 	def __str__(self):
 		m = '\ncnn_output_data\n--------\n'
@@ -65,14 +53,45 @@ class cnn_ch_output_data:
 		m += 'nclean test:\t\t' + str(self.ntest_clean) +'\n'
 		m += 'nartifact smalltest:\t' + str(self.nsmalltest_artifact) +'\n'
 		m += 'nclean smalltest:\t' + str(self.nsmalltest_clean) +'\n'
+		m += 'nclean smalltest:\t' + str(self.nsmalltest_clean) +'\n'
+		m += 'part:\t' + str(self.part) +'\n'
+		m += 'index:\t' + str(self.index) +'\n'
 		return m
 		
+	def create_clean_artifact_indices(self, train_only = False):
+		# create set of indices for clean and artifact samples for train test and smalltest datasets
+		self.train_artifact_indices = np.where(self.train_info >= .5)[0]
+		self.train_clean_indices = np.where(self.train_info < .5)[0]
+		self.ntrain_artifact = sum(self.train_info)
+		self.ntrain_clean = self.ntrain - self.ntrain_artifact
+
+		if not train_only or not hasattr(self,'test_artifact_indices'):
+			self.test_artifact_indices = np.where(self.train_info >= .5)[0]
+			self.test_clean_indices = np.where(self.train_info < .5)[0]
+			self.smalltest_artifact_indices = np.where(self.smalltest_info >= .5)[0]
+			self.smalltest_clean_indices = np.where(self.smalltest_info < .5)[0]
+			self.ntest_artifact = sum(self.test_info)
+			self.ntest_clean = self.ntest - self.ntest_artifact
+			self.nsmalltest_artifact = sum(self.smalltest_info)
+			self.nsmalltest_clean = self.nsmalltest - self.nsmalltest_artifact
+
+	def load_next_training_part(self,index = None):
+		if index != None and type(index) == int and 0 < index < 9:
+			self.index = index
+			self.part = index + 1
+		else:
+			self.part += 1
+			if self.part > 9: self.part = 1
+		self.index = self.part - 1
+		self.train_data = np.load(self.train_data_filenames[self.index])
+		self.train_info = np.load(self.train_info_filenames[self.index])
+		self.create_clean_artifact_indices(train_only = True)
 
 class cnn_ch_output2data:
 	'''Create dataset to train a regression model on the predicted artifacts and remove the false positives.
 	Create dataset for a specific eeg block and test predicted artifact and remove false positives.
 	'''
-	def __init__(self,name= '', window_length = 201, model_name = 'unk',predicted_perc = None):
+	def __init__(self,name= '', window_length = 301, model_name = 'rep-26_perc-20_fold-1_part-70_kernel-6_model7', predicted_perc = None,remove_ch = ['Fp2']):
 		'''Initialize data object that handles loading of training and test files for cnn training.
 		Can also be used to test predicted block data 
 
@@ -96,6 +115,8 @@ class cnn_ch_output2data:
 		self.window_length = window_length
 		self.model_name = model_name
 		self.output_filename = path.channel_cnn_output_data + self.model_name + '_' + self.name
+		self.remove_ch = remove_ch
+		self.channels = utils.load_selection_ch_names()
 
 		if predicted_perc != np.ndarray: self.load_files()
 		else: self.predicted = predicted_perc
@@ -141,6 +162,7 @@ class cnn_ch_output2data:
 			self.handle_annotated_block = True 
 			self.ground_truth = np.load(self.ground_truth_filename)
 			self.ground_truth = (self.ground_truth >= .5).astype(int)
+			self.remove_channels()
 			flatten_ground_truth = np.ravel(self.ground_truth,'F')
 			flatten_pc = np.ravel(self.pc,'F')
 			self.confusion_matrix = sklearn.metrics.confusion_matrix(flatten_ground_truth,flatten_pc)#, labels = [0,1])
@@ -148,12 +170,25 @@ class cnn_ch_output2data:
 			cm = plot_roc.confusion_matrix(data = self.confusion_matrix)
 			self.f1,self.mcc,self.recall,self.precision,self.fpr,self.cm = cm.f1,cm.mcc,cm.recall,cm.precision,cm.fpr, cm
 		else: 
+			self.handle_annotated_block = False
+			self.remove_channels()
 			self.ground_truth_present = 'not available'
 			self.ground_truth = None
 			self.confusion_matrix = None
 			self.f1,self.mcc,self.recall,self.precision,self.fpr,self.cm = [None]*6
 
 		self.nrows,self.nchannels = self.predicted.shape
+	
+	def remove_channels(self):
+		channels = self.channels
+		for ch in self.remove_ch:
+			index = channels.index(ch)
+			channels.pop(index)
+			self.predicted = np.delete(self.predicted,index,axis =1)
+			self.pc= np.delete(self.pc,index,axis =1)
+			if self.handle_annotated_block:
+				self.ground_truth= np.delete(self.ground_truth,index,axis =1)
+		self.remaining_channels = channels
 		
 
 	def make_indices(self):
@@ -221,17 +256,24 @@ def get_names_output_files(model_name = 'unk'):
 	model_name  	name of the cnn model to generate the output files.
 	'''
 	fn = glob.glob(path.channel_snippet_annotation + model_name + '_pp*class.npy')
-	names = [f.split('part-90_')[-1].split('_class.npy')[0] for f in fn]
+	names = ['pp' + f.split('_pp')[-1].split('_class.npy')[0] for f in fn]
 	return names
 
-def save_all_predicted_artifacts(model_name = 'unk', window_length = 201,overwrite = False):
+
+def get_names_manually_annotated():
+	fn = glob.glob(path.channel_artifact_training_data + 'pp*exp*data.npy')
+	names = [f.split('/')[-1].rstrip('_data.npy') for f in fn]
+	print('found: ',len(names),' files')
+	return names
+
+def save_all_predicted_artifacts(model_name = 'unk', window_length = 301,overwrite = False,remove_ch= ['Fp2']):
 	'''Save all predicted artifacts of all annotated eeg block files.
 
 	model_name 	 	model used to generate output files
 	window_length 	size of context to of the perc_artifact output
 	overwrite 		whether to overwrite existing predicted artifact files
 	'''
-	names = get_names_output_files(model_name)
+	names = get_names_manually_annotated()
 	bar = pb.ProgressBar()
 	bar(range(len(names)))
 	for i,name in enumerate(names):
@@ -240,7 +282,7 @@ def save_all_predicted_artifacts(model_name = 'unk', window_length = 201,overwri
 		if not overwrite and os.path.isfile(output_filename +'_artifact-data.npy'): 
 			print('Skipping name:',name,'artifact-data file already exists, use overwrite TRUE to overwrite')
 			continue
-		d = cnn_ch_output2data(name = name, window_length = window_length)
+		d = cnn_ch_output2data(name = name,model_name = model_name, window_length = window_length,remove_ch = remove_ch)
 		d.save_predicted_artifacts(overwrite = overwrite,verbose =False)
 
 def name2output_name(name, model_name = 'unk'):
@@ -248,7 +290,7 @@ def name2output_name(name, model_name = 'unk'):
 	output_filename = path.channel_cnn_output_data + model_name + '_' + name
 	return output_filename
 		
-def make_all_data(window_length = 201, overwrite = False):
+def make_all_data(model_name = 'rep-26_perc-20_fold-1_part-70_kernel-6_model7',window_length = 301, overwrite = False,remove_ch = ['Fp2']):
 	'''Generates all predicted artifact files based on model cnn output predictions and combines these into one dataset
 	and info np array.
 
@@ -257,27 +299,21 @@ def make_all_data(window_length = 201, overwrite = False):
 	'''
 
 	# create cnn_output format per block file
-	names = get_names_output_files()
-	save_all_predicted_artifacts(window_length = window_length, overwrite = overwrite)
+	save_all_predicted_artifacts(model_name = model_name,window_length = window_length, overwrite = overwrite,remove_ch = remove_ch)
+	names = get_names_manually_annotated()
 	bar = pb.ProgressBar()
 	bar(range(len(names)))
 
 	# concatenate cnn_output format files into one data structure
 	for i,name in enumerate(names):
 		bar.update(i)
-		output_filename = name2output_name(name)
+		output_filename = name2output_name(name, model_name)
 		if i == 0:
 			data = np.load(output_filename + '_artifact-data.npy')
 			info = np.load(output_filename + '_artifact-info.npy')
 		else:
 			data = np.concatenate((data,np.load(output_filename + '_artifact-data.npy')))
 			info = np.concatenate((info,np.load(output_filename + '_artifact-info.npy')))
-
-	not_other_indices = np.where(info != 2)[0]
-
-	if remove_other:
-		data = data[not_other_indices,:]
-		info = info[not_other_indices]
 	return data,info
 		
 	
@@ -311,4 +347,20 @@ def save_training_test(data,info):
 	np.save(path.cnn_output_data + 'test_clean_data',test_clean_data)
 
 	
+def get_classify_info():
+
+	fout = open(path.data + 'classify_ch_info','w')
+	fout.close()
+	names = get_names_manually_annotated()
+	for i,name in enumerate(names):
+		print('handling file:',name,i,len(names))
+		p = cnn_ch_output2data(name)
+		gt = ','.join(list(map(str,sum(p.ground_truth))))
+		pc = ','.join(list(map(str,sum(p.pc.astype(int)))))
+		f =  p.predicted_filename.split('model7_')[-1]
+		line = '\t'.join(list(map(str,[f,p.mcc,p.precision,p.recall,p.cm.tn,p.cm.fp,p.cm.fn,p.cm.tp,gt,pc])))
+		fout = open(path.data + 'classify_ch_info_ch25','a')
+		fout.write(line + '\n')
+		fout.close()
+		
 		
