@@ -33,7 +33,7 @@ def make_matrix(fo, add_pp_info = False,normalize_data = True,save_directory =No
 				print(windower.make_name(b))
 				d = load_100hz_numpy_block(windower.make_name(b))
 				if b.start_marker_missing or b.end_marker_missing:
-					w = windower.Windower(b,nsamples= d.shape[1], sf = 100,window_overlap_percentage = .99)
+					w = windower.Windower(b,nsamples= d.shape[1]*10, sf = 100,window_overlap_percentage = .99)
 				else:
 					w = windower.Windower(b,sf = 100,window_overlap_percentage = .99)
 				f = windower.block2channel_fn_annotation(w.b,path.channel_artifacts_clean)
@@ -50,7 +50,11 @@ def make_matrix(fo, add_pp_info = False,normalize_data = True,save_directory =No
 					fout.write(w.name + '\t' + str(rows) + '\n')
 					print (d.shape, w.info_matrix.shape[0])
 					assert d.shape[0] == w.info_matrix.shape[0]
-					d = insert_target_channel_rows(d,nchannels=26,kernel_size=6)
+					# d = insert_target_channel_rows(d,nchannels=26,kernel_size=6)
+					# IMPORTANT: this was not commented when I checked the file
+					# however resulting files look like it was commented during execution
+					# insert target channel is done later in pipeline
+					# not sure what happened
 					np.save(save_directory+ w.name + '_data',d)
 				np.save(save_directory+ w.name + '_info',w.info_matrix)
 
