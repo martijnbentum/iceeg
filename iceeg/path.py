@@ -22,6 +22,7 @@ if os.path.isdir(volume +'EEG'):eeg= volume + 'EEG/'
 elif os.path.isdir('/Volumes/BAK4TB/EEG/'):eeg = '/Volumes/BAK4TB/EEG/'
 elif os.path.isdir('/Volumes/BAK1TB/EEG/'): eeg = '/Volumes/BAK1TB/EEG/'
 elif os.path.isdir('/vol/tensusers/mbentum/BAK/EEG/'): eeg = '/vol/tensusers/mbentum/BAK/EEG/'
+elif os.path.isdir('/Users/u050158/storage/'): eeg= data + 'EEG_INFO/'
 else: print('please add path to eeg files to path.py file in the iceeg folder')
 
 log= data + 'LOG_FILES/'
