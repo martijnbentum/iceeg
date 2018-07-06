@@ -83,12 +83,12 @@ class xml_handler:
 		if load_data: self.load_xml()
 		for bc_xml in self.artifacts.iter('bad_channel'):
 			# fetch subelements
-			element_names = 'channel,st_sample,et_sample,block_st_sample,block_et_sample,pp_id,bid,annotation,color,exp_type,coder,epoch_ids,coder'.split(',')
+			element_names = 'channel,st_sample,et_sample,block_st_sample,block_et_sample,pp_id,bid,annotation,color,exp_type,epoch_ids,coder,correct'.split(',')
 			element_values = []
 			for e in element_names:
 				if not bc_xml.find(e) == None: element_values.append(bc_xml.find(e).text)
 				else: element_values.append('NA')
-			channel,st_sample,et_sample,block_st_sample,block_et_sample,pp_id,bid,annotation,color,exp_type,coder,epoch_ids,coder= element_values
+			channel,st_sample,et_sample,block_st_sample,block_et_sample,pp_id,bid,annotation,color,exp_type,epoch_ids,coder,correct= element_values
 			if st_sample == 'NA' or et_sample == 'NA':
 				continue
 			epoch_id = bc_xml.attrib['id']
@@ -97,7 +97,7 @@ class xml_handler:
 			start = bad_epoch.Boundary(x = int(int(st_sample) * multiplier),boundary_type='start',visible = False)
 			end = bad_epoch.Boundary(x = int(int(et_sample) * multiplier),boundary_type='end',visible = False)
 			# create bad epoch
-			bc = bad_channel.Bad_channel(channel,start_boundary = start, end_boundary = end, annotation = annotation, pp_id = pp_id, exp_type = exp_type, bid = bid,block_st_sample = block_st_sample,epoch_id = epoch_id, visible = False, epoch_ids = epoch_ids ,block_et_sample = block_et_sample,coder = coder)
+			bc = bad_channel.Bad_channel(channel,start_boundary = start, end_boundary = end, annotation = annotation, pp_id = pp_id, exp_type = exp_type, bid = bid,block_st_sample = block_st_sample,epoch_id = epoch_id, visible = False, epoch_ids = epoch_ids ,block_et_sample = block_et_sample,coder = coder,correct = correct,color = color)
 			self.bad_channels.append(bc)
 		print('N bad channels:',len(self.bad_channels))
 		return self.bad_channels
