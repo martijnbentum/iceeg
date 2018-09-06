@@ -1,12 +1,13 @@
 import bad_channel
 import bad_epoch
+import combine_artifacts
 from lxml import etree
 import os
 import path
 import time
 
 class xml_handler:
-	def __init__(self,bad_epochs = [],bad_channels = [],filename = '',multiplier = 1,artifact_type = 'bad_epoch'):
+	def __init__(self,bad_epochs = [],bad_channels = [],bads = [],filename = '',multiplier = 1,artifact_type = 'bad_epoch'):
 		'''Writes artifact info generated with manual_artifact_coder to xml files
 
 		bad_epochs 	a list of bad_epoch objects, can be empty
@@ -14,6 +15,8 @@ class xml_handler:
 		'''
 		self.bad_epochs = bad_epochs
 		self.bad_channels = bad_channels
+		self.bads = bads
+		self.artifact_type = artifact_type
 		self.filename = filename
 		self.artifacts = etree.Element('artifacts')
 
@@ -26,9 +29,38 @@ class xml_handler:
 		self.cdate = time.time()
 		self.date = time.strftime("%b-%d-%Y-%H-%M-%S", time.localtime(self.cdate))
 
+	def bads2xml(self):
+		self.bad_epochs = self.bads.bads
+		self.bad_channels = self.bads.bad_channels
+		self.bad_epochs2xml()
+		self.bad_channels2xml()
+		info_xml = etree.SubElement(self.artifacts, 'info', id = 'bads-info')
+		elements = 'name,nbe,nbc,ch_threshold,usability,block_duration,clean_duration,artifact_duration,clean_perc,artifact_perc,artifact_channels,be_annotations,bc_annotations,remove_ch'.split(',')
+		for e in elements:
+			element = etree.SubElement(info_xml,e)
+			if not hasattr(self.bads,e):
+				element.text = 'NA'
+			elif e == 'remove_ch':
+				element.text = ' '.join(getattr(self.bads,e))
+			elif e in 'artifact_channels,be_annotations,bc_annotations'.split(','):
+				d = getattr(self.bads,e)
+				t = ' '.join([key + ',' + str(d[key]) for key in d])
+				element.text = t
+			else:
+				element.text = str(getattr(self.bads,e))
+		element = etree.SubElement(info_xml,'note')
+		element.text = '''
+		bad_epochs are all stretches that are bad, including 
+		bad channel that are not removed. 
+		Bad_channel are all bad_channels that are not removed.
+		Removed channels should be removed, they are bad for 
+		a percentage (or more set in ch_threshold) of the block duration.'''
+		
+
 	def bad_channels2xml(self, multiplier = 1):
 		'''Adds bad epochs from the m object to the xml tree.'''
-		self.artifacts = etree.Element('artifacts')
+		if self.artifact_type == 'bads' and hasattr(self,'artifacts'): pass
+		else: self.artifacts = etree.Element('artifacts')
 		for bc in self.bad_channels:
 			if not bc.ok:
 				pass
@@ -49,7 +81,8 @@ class xml_handler:
 
 	def bad_epochs2xml(self, multiplier = 1):
 		'''Adds bad epochs from the m object to the xml tree.'''
-		self.artifacts = etree.Element('artifacts')
+		if self.artifact_type == 'bads' and hasattr(self,'artifacts'): pass
+		else: self.artifacts = etree.Element('artifacts')
 		for be in self.bad_epochs:
 			if not be.ok:
 				pass
@@ -93,13 +126,13 @@ class xml_handler:
 				continue
 			epoch_id = bc_xml.attrib['id']
 			#create start and end boundary
-			print(st_sample,et_sample)
+			# print(st_sample,et_sample)
 			start = bad_epoch.Boundary(x = int(int(st_sample) * multiplier),boundary_type='start',visible = False)
 			end = bad_epoch.Boundary(x = int(int(et_sample) * multiplier),boundary_type='end',visible = False)
 			# create bad epoch
 			bc = bad_channel.Bad_channel(channel,start_boundary = start, end_boundary = end, annotation = annotation, pp_id = pp_id, exp_type = exp_type, bid = bid,block_st_sample = block_st_sample,epoch_id = epoch_id, visible = False, epoch_ids = epoch_ids ,block_et_sample = block_et_sample,coder = coder,correct = correct,color = color)
 			self.bad_channels.append(bc)
-		print('N bad channels:',len(self.bad_channels))
+		# print('N bad channels:',len(self.bad_channels))
 		return self.bad_channels
 
 
@@ -120,14 +153,46 @@ class xml_handler:
 				continue
 			epoch_id = be_xml.attrib['id']
 			#create start and end boundary
-			print(st_sample,et_sample)
+			# print(st_sample,et_sample)
 			start = bad_epoch.Boundary(x = int(int(st_sample) * multiplier),boundary_type='start',visible = False)
 			end = bad_epoch.Boundary(x = int(int(et_sample) * multiplier),boundary_type='end',visible = False)
 			# create bad epoch
 			be = bad_epoch.Bad_epoch(start_boundary = start, end_boundary = end, annotation = annotation, color = color,pp_id = pp_id, exp_type = exp_type, bid = bid,block_st_sample = block_st_sample,epoch_id = epoch_id, visible = False, epoch_ids = epoch_ids ,block_et_sample = block_et_sample,coder = coder,correct = correct)
 			self.bad_epochs.append(be)
-		print('N bad epoch:',len(self.bad_epochs))
+		# print('N bad epoch:',len(self.bad_epochs))
 		return self.bad_epochs
+
+
+	def xml2bads(self,load_data = True, remove_clean = False):
+		if load_data: self.load_xml()
+		self.bad_epochs = []
+		self.bad_channels = []
+		self.xml2bad_epochs(load_data = False,remove_clean = remove_clean)
+		self.xml2bad_channels(load_data = False)
+		elements = 'name,nbe,nbc,ch_threshold,usability,block_duration,clean_duration,artifact_duration,clean_perc,artifact_perc,artifact_channels,be_annotations,bc_annotations,remove_ch'.split(',')
+		info_xml = self.artifacts.find('info')
+		element_values = []
+		bads = combine_artifacts.bads(name = '-')
+		for e in elements:
+			t = info_xml.find(e) 
+			if not t == None:
+				t = t.text
+				if e == 'remove_ch':
+					setattr(bads,e,t.split(' '))
+				elif e in 'artifact_channels,be_annotations,bc_annotations'.split(','):
+					d = dict([line.split(',') for line in t.split(' ')])
+					setattr(bads,e,d)
+				elif e in 'nbe,nbc,block_duration,clean_duration,artifact_duration'.split(','): 
+					setattr(bads,e,int(t))
+				elif e in 'ch_threshold,clean_perc,artifact_perc'.split(','):
+					setattr(bads,e,float(t))
+				else:
+					setattr(bads,e,t)
+			else: setattr(bads,e,'NA')
+		bads.bad_channels = self.bad_channels
+		bads.bads = self.bad_epochs
+		self.bads = bads
+		return bads
 
 
 	def write(self):
