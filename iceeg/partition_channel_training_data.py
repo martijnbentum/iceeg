@@ -152,5 +152,23 @@ def make_smalltest(nrow_selection = 10000):
 		np.save(path.channel_artifact_training_data +'PART_INDICES/smalltest_info_part-'+number_part[n]+'.npy',si)
 		
 
-
+def compare_testset_and_block_classifications():
+	datafn2nrows = load_dict_datafn2nrows()
+	datafn_all_rows_before = make_list_datafn_all_rows_before(datafn2nrows)
+	fn_test_data = glob.glob(path.model_channel + 'allrep-26*_part-*predicted.npy')
+	temp_fn = glob.glob(path.channel_artifact_training_data + 'PART_INDICES/indices*.npy')
+	fn_indices= [f for f in temp_fn if int(f.split('part-')[-1].split('.')[0]) <=10][:-1]
+	temp_fn = glob.glob(path.channel_artifact_training_data + 'PART_INDICES/info*.npy')
+	fn_info = [f for f in temp_fn if int(f.split('part-')[-1].split('.')[0]) <=10]
+	for i,f in enumerate(fn_indices_files):
+		print(f,i,len(fn))
+		part = f.split('part-')[-1].split('.')[0]
+		ftd = [f for f in fn_test_data if 'tp-'+part + '.npy' in f][0]
+		print('creating part file:', f,'part:',part)
+		indices = np.load(f)
+		filenames_and_indices = make_filenames_and_indices(indices,datafn_all_rows_before)
+		data_output,info_output = make_part_file(filenames_and_indices)
+		np.save(f.replace('indices','data'),data_output)
+		np.save(f.replace('indices','info'),info_output)
+		write_update(f.replace('indices_',''))
 
