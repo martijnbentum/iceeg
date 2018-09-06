@@ -9,7 +9,7 @@ Work In Progress
 '''
 all_block_names = open(path.data + 'all_block_names.txt').read().split('\n')
 
-exptype2explanation_dict = {'o':'read-aloud-books','k':'News-broadcast','ifadv':'spontaneous-dialogue'}
+exptype2explanation_dict = {'o':'read-aloud-books','k':'News-broadcast','ifadv':'dialogue'}
 
 def name2pp_id(name):
 	'''Extract pp id from name (windower.make_name(b)).'''
