@@ -16,7 +16,7 @@ import windower
 import xml_handler
 
 class ac:
-	def __init__(self,b,length = 10,overlap = False,coder = 'martijn',filename = '',load_xml = True,sf = 100, remove_ch= None, show_cnn_pred = False, offset_value = 40, view_mode = 'all',filename_channels = '',default_annotation = 'garbage',default_annotation_channel = 'garbage', annotation_type = 'artifact',save_dir = '',add_channel_to_remove = ''):
+	def __init__(self,b,length = 10,overlap = False,coder = 'martijn',filename = '',load_xml = True,sf = 100, remove_ch= None, show_cnn_pred = False, offset_value = 40, view_mode = 'all',filename_channels = '',default_annotation = 'garbage',default_annotation_channel = 'garbage', annotation_type = 'artifact',save_dir_artifact= '', save_dir_ch = '', add_channel_to_remove = '',enforce_coder = True):
 		'''Interface to easily annotate eeg signal
 		b 			block object
 		length 		duration in seconds of an epoch in the interface
@@ -27,19 +27,19 @@ class ac:
 		load_data 	surpress previously generated bad_epochs (create new annotation), old versions are moved to OLD 
 					directory in artifacts folder.
 		'''
+		self.enforce_coder = enforce_coder
 		self.show_complete_bad = True
 		self.show_bad_channels = True
 		self.artifact_selected = None
 		self.b = b
 		self.coder = coder
 		self.annotation_type = annotation_type
-		self.save_dir = save_dir
-		if self.save_dir != '' and self.save_dir[-1] != '/': self.save_dir += '/'
-		if annotation_type != 'artifact' and save_dir == '': raise ValueError('provide save dir to save corrections.')
+		self.save_dir_artifact = save_dir_artifact
+		self.save_dir_ch = save_dir_ch
 		self.filename = filename
 		self.filename_channels = filename_channels
-		if annotation_type == 'corrector' and filename == '': self.find_cnn_xml_filename()
-		if annotation_type == 'channel_corrector' and filename == '': self.find_ch_cnn_xml_filename()
+		self.find_cnn_xml_filename()
+		self.find_ch_cnn_xml_filename()
 		self.default_annotation = default_annotation
 		self.default_annotation_channel = default_annotation_channel
 		self.channel_mode = 'off'
@@ -79,6 +79,7 @@ class ac:
 			index = self.bigger_bc.index(self.channel_artifact_selected)
 			self.smaller_bc = [self.bigger_bc.pop(index)]
 		self.plot_epoch('all',offset_value = self.offset_value)
+		self.channel_mode_index = self.channels.index(self.channel_artifact_selected.channel)
 		self.reset_visible()
 		self.handle_plot(True)
 		self.redraw = False
@@ -99,7 +100,9 @@ class ac:
 
 	def find_ch_cnn_xml_filename(self):
 		print('search xml channel file in corrected dir...')
-		filename = path.data + self.save_dir + self.coder + '_' + windower.make_name(self.b) + '.xml'
+		if self.save_dir_ch == '': self.save_dir_ch= path.corrected_ch_cnn_xml
+		filename = self.save_dir_ch + self.coder + '_' + windower.make_name(self.b) + '.xml'
+		print('looking for file:',filename)
 		if os.path.isfile(filename): 
 			self.filename_channels = filename
 			return 0
@@ -111,9 +114,14 @@ class ac:
 		print(fn,self.filename_channels,'bla')
 
 	def find_cnn_xml_filename(self):
-		filename = path.data + self.save_dir + self.coder + '_' + windower.make_name(self.b) + '.xml'
-		if os.path.isfile(filename): 
-			self.filename = filename
+		if self.save_dir_artifact == '': self.save_dir_artifact = path.corrected_artifact_cnn_xml
+		if self.enforce_coder == True: coder = self.coder
+		else: coder = '*'
+		filename = self.save_dir_artifact + coder + '_' + windower.make_name(self.b) + '.xml'
+		fn = glob.glob(filename)
+		if len(fn) != 1: print('did not find a unique filename',fn,filename)
+		else:
+			self.filename = fn[0]
 			return 0
 		name = windower.make_name(self.b) + '.xml'
 		fn = glob.glob(path.artifact_cnn_xml + '*' +name)
@@ -148,6 +156,7 @@ class ac:
 			self.filename_channels = path.bad_channels+ self.coder + '_pp' + str(self.pp_id) + '_exp-' + self.exp_type + '_bid-' + str(self.bid) + '_channels.xml'
 
 		if os.path.isfile(self.filename): 
+			print('loading bad epochs with filename:', self.filename)
 			xml = xml_handler.xml_handler(filename = self.filename)
 			self.bad_epochs = xml.xml2bad_epochs(multiplier = 0.1,remove_clean = True)
 			for be in self.bad_epochs:
@@ -186,25 +195,26 @@ class ac:
 
 
 	def handle_save_xml(self,force_save = False):
-		if self.annotation_type == 'corrector': 
-			filename = path.data + self.save_dir + self.coder + '_' + windower.make_name(self.b) + '.xml'
-		elif self.save_dir != '':
-			filename = path.data + self.save_dir + self.filename.split('/')[-1]
-		else: filename = self.filename
-		save_ok = False
-		for be in self.bad_epochs:
-			if be.ok: save_ok = True
-		if save_ok and (time.time() - self.last_save > 60 or force_save == True):
-			print('saving:',self.filename)
-			print('nbad epochs:',len(self.bad_epochs))
-			self.last_save = time.time()
-			xml = xml_handler.xml_handler(bad_epochs=self.bad_epochs,filename=filename)
-			xml.bad_epochs2xml(multiplier = 10)
-			xml.write()
+		if not self.annotation_type == 'channel_corrector':
+			if self.annotation_type == 'corrector': 
+				filename = self.save_dir_artifact + self.coder + '_' + windower.make_name(self.b) + '.xml'
+			elif self.save_dir_artifact != '':
+				filename = path.data + self.save_dir_artifact + self.filename.split('/')[-1]
+			else: filename = self.filename
+			save_ok = False
+			for be in self.bad_epochs:
+				if be.ok: save_ok = True
+			if save_ok and (time.time() - self.last_save > 60 or force_save == True):
+				print('saving:',filename)
+				print('nbad epochs:',len(self.bad_epochs))
+				self.last_save = time.time()
+				xml = xml_handler.xml_handler(bad_epochs=self.bad_epochs,filename=filename)
+				xml.bad_epochs2xml(multiplier = 10)
+				xml.write()
 
 		save_ok = False
 		if self.annotation_type == 'channel_corrector':
-			filename = path.data + self.save_dir + self.coder + '_' + windower.make_name(self.b) + '.xml'
+			filename = self.save_dir_ch + self.coder + '_' + windower.make_name(self.b) + '.xml'
 		else: filename = self.filename_channels
 		for bc in self.bad_channels:
 			if bc.ok: save_ok = True
@@ -213,7 +223,7 @@ class ac:
 				bc.correct = 'incorrect'
 			
 		if save_ok and (time.time() - self.last_save > 60 or force_save == True):
-			print('saving:',self.filename)
+			print('saving:',filename)
 			print('nbad channels:',len(self.bad_channels))
 			self.last_save = time.time()
 			xml = xml_handler.xml_handler(bad_channels =self.bad_channels,filename = filename)
@@ -809,12 +819,36 @@ class ac:
 		else: self.show_bad_channels= True
 		self.handle_plot(force_redraw=True)
 
+	def find_all_bc_channel(self,channel):
+		return [bc for bc in self.bad_channels if bc.channel == channel]
+
+	def expand_bad_channel(self,key):
+		bc =self.channel_artifact_selected
+		i = self.channel_mode_index
+		bcs = self.find_all_bc_channel(bc.channel)
+		bcs.sort()
+		if key == '[': bc.zero_crossing(self.data[i,:],'start')
+		elif key == ']': bc.zero_crossing(self.data[i,:],'end')
+		elif key == '{': 
+			if bcs.index(bc) > 0: 
+				bc.expand_to_bad_channel(bcs[bcs.index(bc) -1])
+			else: bc.set_boundary(bc.start,0)
+		elif key == '}':
+			if bcs.index(bc) < (len(bcs) - 1): 
+				print(bcs[bcs.index(bc) +1],bcs)
+				bc.expand_to_bad_channel(bcs[bcs.index(bc) +1])
+			else: bc.set_boundary(bc.end,self.data.shape[1])
+		elif key == 'u': bc.reset_old_boundaries()
+		else: return
+		self.handle_plot(force_redraw=True)
+
 	def on_key(self,event):
 		'''Handle a key press event - links to pyplot window event manager.'''
 		self.event_key = event
 		self.event= event
 		print(event.key)
 		force_save = False
+		if event.key in ['[',']','{','}','u']: self.expand_bad_channel(event.key)
 		if event.key in ['b','n']:
 			self.handle_epoch_switch(event.key)
 		if event.key == 'K': self.toggle_show_complete_bad()
@@ -943,6 +977,9 @@ class ac:
 				plt.plot(yx,y[i,:]+offset,linewidth = 0.9,color=clist[ci],alpha =0.1)
 			else:
 				plt.plot(yx,y[i,:]+offset,linewidth = 0.9,color=clist[ci])
+				focus_channel = y[i,:]+ offset
+				focus_ci = ci
+				# focus_offset = offset
 			ci +=1
 			if ci == len(clist):ci =0
 			# create coordinates for channel names before and after channel plot
@@ -985,15 +1022,19 @@ class ac:
 			for bc in self.bad_channels:
 				if bc.channel in self.remove_ch: continue
 				i = self.ch_names.index(bc.channel)
-				
 				if bc.annotation != 'all': 
 					bc.plot(channel_data = self.data[i],offset = i*offset_value)
-				if bc == self.channel_artifact_selected:
-					if self.channel_artifact_selected.correct == 'correct':
-						color = 'green'
-					else: color = 'red'
-					bc.plot(channel_data = self.data[i],offset = i*offset_value,color =color) 
+			if self.channel_artifact_selected.correct == 'correct':
+				color = 'green'
+			else: color = 'red'
 		plt.grid(alpha=0.2,color='tan',lw=2)
+
+		if self.annotation_type == 'channel_corrector':
+			bc =self.channel_artifact_selected
+			bc.plot(channel_data = self.data[self.channel_mode_index],offset = self.channel_mode_index*offset_value,color =color) 
+			plt.plot(yx,focus_channel,linewidth = 0.9,color=clist[focus_ci],alpha=0.5)
+			# plt.plot(yx,y[self.channel_mode_index,:]+focus_offset,linewidth = 0.9,color='blue')
+			plt.axhline(y=self.channel_mode_index * offset_value,color = 'black',alpha = .9,linewidth = 1)
 
 		ypos = plt.ylim()[1] - 100
 		if self.e_index == len(self.start_epoch) - 1:
