@@ -18,13 +18,17 @@ class cnn_ch_output_data:
 	It presupposes that train and test files are generated based on model_ch_cnn output for each block
 	These files can be created with cnn_channel_output2data class
 	'''
-	def __init__(self,part= 1):
+	def __init__(self,part= 1,test_part = 10):
 		'''Initialize data object that handles loading of training and test files for cnn ch output data training.
 		the dataset is created with functions in cnn_channel_output2data class
 		'''
 		if part == 0: self.part = 1
 		else: self.part = part
 		self.index = self.part -1
+
+		if test_part == 0: self.test_part = 1
+		else: self.test_part = test_part
+		if self.test_part == self.part: raise ValueError('cannot train and test on the same part')
 			
 		self.train_data_filenames = [path.channel_cnn_output_data +'PART_INDICES/data_part-'+str(i)+'.npy' for i in range(1,10)]
 		self.train_info_filenames = [path.channel_cnn_output_data +'PART_INDICES/info_part-'+str(i)+'.npy' for i in range(1,10)]
@@ -91,7 +95,7 @@ class cnn_ch_output2data:
 	'''Create dataset to train a regression model on the predicted artifacts and remove the false positives.
 	Create dataset for a specific eeg block and test predicted artifact and remove false positives.
 	'''
-	def __init__(self,name= '', window_length = 301, model_name = 'rep-26_perc-20_fold-1_part-70_kernel-6_model7', predicted_perc = None,remove_ch = ['Fp2']):
+	def __init__(self,name= '', window_length = 301, model_name = 'rep-26_perc-20_fold-1_part-70_kernel-6_model7', predicted_perc = None,remove_ch = []):
 		'''Initialize data object that handles loading of training and test files for cnn training.
 		Can also be used to test predicted block data 
 
@@ -266,7 +270,7 @@ def get_names_manually_annotated():
 	print('found: ',len(names),' files')
 	return names
 
-def save_all_predicted_artifacts(model_name = 'unk', window_length = 301,overwrite = False,remove_ch= ['Fp2']):
+def save_all_predicted_artifacts(model_name = 'unk', window_length = 301,overwrite = False,remove_ch= []):
 	'''Save all predicted artifacts of all annotated eeg block files.
 
 	model_name 	 	model used to generate output files
@@ -290,7 +294,7 @@ def name2output_name(name, model_name = 'unk'):
 	output_filename = path.channel_cnn_output_data + model_name + '_' + name
 	return output_filename
 		
-def make_all_data(model_name = 'rep-26_perc-20_fold-1_part-70_kernel-6_model7',window_length = 301, overwrite = False,remove_ch = ['Fp2']):
+def make_all_data(model_name = 'rep-26_perc-20_fold-1_part-70_kernel-6_model7',window_length = 301, overwrite = False,remove_ch = []):
 	'''Generates all predicted artifact files based on model cnn output predictions and combines these into one dataset
 	and info np array.
 
@@ -347,20 +351,25 @@ def save_training_test(data,info):
 	np.save(path.cnn_output_data + 'test_clean_data',test_clean_data)
 
 	
-def get_classify_info():
-
-	fout = open(path.data + 'classify_ch_info','w')
+def get_classify_info(identifier = '',remove_ch = []):
+	if len(identifier) > 0 and type(identifier) == str and identifier[0] != '_':
+		identifier = '_' + identifier
+	fout = open(path.data + 'classify_ch_info' + identifier,'w')
 	fout.close()
 	names = get_names_manually_annotated()
+	bads = []
 	for i,name in enumerate(names):
 		print('handling file:',name,i,len(names))
-		p = cnn_ch_output2data(name)
-		gt = ','.join(list(map(str,sum(p.ground_truth))))
-		pc = ','.join(list(map(str,sum(p.pc.astype(int)))))
-		f =  p.predicted_filename.split('model7_')[-1]
-		line = '\t'.join(list(map(str,[f,p.mcc,p.precision,p.recall,p.cm.tn,p.cm.fp,p.cm.fn,p.cm.tp,gt,pc])))
-		fout = open(path.data + 'classify_ch_info_ch25','a')
-		fout.write(line + '\n')
-		fout.close()
+		try:
+			p = cnn_ch_output2data(name, remove_ch= remove_ch)
+			gt = ','.join(list(map(str,sum(p.ground_truth))))
+			pc = ','.join(list(map(str,sum(p.pc.astype(int)))))
+			f =  p.predicted_filename.split('model7_')[-1]
+			line = '\t'.join(list(map(str,[f,p.mcc,p.precision,p.recall,p.cm.tn,p.cm.fp,p.cm.fn,p.cm.tp,gt,pc])))
+			fout = open(path.data + 'classify_ch_info' + identifier,'a')
+			fout.write(line + '\n')
+			fout.close()
+		except: bads.append(name)
+	return bads
 		
 		
