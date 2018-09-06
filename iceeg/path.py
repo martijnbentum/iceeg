@@ -19,10 +19,10 @@ else: print('please add path to secondary data folder to the path.py file in the
 
 data= volume + 'EEG_DATA_ifadv_cgn/'
 if os.path.isdir(volume +'EEG'):eeg= volume + 'EEG/'
-elif os.path.isdir('/Volumes/BAK4TB/EEG/'):eeg = '/Volumes/BAK4TB/EEG/'
+if os.path.isdir('/Users/u050158/storage/'): eeg= data + 'EEG_INFO/'
+if os.path.isdir('/Volumes/BAK4TB/EEG/'):eeg = '/Volumes/BAK4TB/EEG/'
 elif os.path.isdir('/Volumes/BAK1TB/EEG/'): eeg = '/Volumes/BAK1TB/EEG/'
 elif os.path.isdir('/vol/tensusers/mbentum/BAK/EEG/'): eeg = '/vol/tensusers/mbentum/BAK/EEG/'
-elif os.path.isdir('/Users/u050158/storage/'): eeg= data + 'EEG_INFO/'
 else: print('please add path to eeg files to path.py file in the iceeg folder')
 
 log= data + 'LOG_FILES/'
@@ -68,5 +68,8 @@ channel_artifact_training_data = bak + 'CHANNEL_ARTIFACT_TRAINING_DATA/'
 model_channel = bak + 'MODEL_CHANNEL/'
 channel_snippet_annotation = bak + 'CHANNEL_SNIPPET_ANNOTATION/'
 artifact_ch_cnn_xml = data + 'ARTIFACT_CH_CNN_XML/'
+corrected_ch_cnn_xml = data + 'CORRECTED_CH_CNN_XML/'
 channel_cnn_output_data = bak + 'CHANNEL_CNN_OUTPUT_DATA/'
 
+# eog = ica_solutions + 'EOG/'
+bads_annotations= data + 'BADS_ANNOTATIONS/'
