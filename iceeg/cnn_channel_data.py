@@ -205,7 +205,7 @@ class cnn_data:
 		else:
 			w = windower.Windower(b,sf = 100,window_overlap_percentage = .99)
 		self.d = remove_channels(self.d)
-		self.d = windower.window_data(self.d,w.windows['sf100'],flatten=True,normalize= True)
+		self.d = windower.window_data(self.d,w.windows['sf100'],flatten=True,normalize= True,cut_off = 300)
 		self.d = insert_target_channel_rows(self.d)
 
 
