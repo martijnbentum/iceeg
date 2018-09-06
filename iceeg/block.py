@@ -4,6 +4,7 @@ block module contains the block class
 the module is used by the experiment class
 '''
 # import blinks
+import combine_artifacts
 import eog
 import handle_ica
 import mne
@@ -44,6 +45,7 @@ class block:
 		self.load_orts()
 		utils.make_attributes_available(self,'ort',self.orts)
 		self.eeg_loaded = False
+		self.name = self.block2name()
 		self.nblinks = 'NA'
 		self.load_blinks()
 		self.load_artifacts()
@@ -68,7 +70,7 @@ class block:
 		m += 'end time\t\t'+str(self.et) + '\n'
 		m += 'duration\t\t'+str(self.duration) + '\n'
 		m += 'nwords\t\t\t'+str(self.nwords) + '\n'
-		m += 'ncontent_words\t\t'+str(self.ncontent_words) + '\n'
+		m += 'ncontent_words\t\t'+str(self.ncwords) + '\n'
 		m += 'nsentences\t\t'+str(self.nsentences) + '\n'
 		m += 'eeg loaded\t\t'+str(self.eeg_loaded) + '\n'
 		m += 'nblinks\t\t\t'+str(self.nblinks) + '\n'
@@ -78,7 +80,7 @@ class block:
 		return m
 
 	def __repr__(self):
-		return 'Block-object:\t' + str(self.bid) + '\tpp ' + str(self.pp_id) + '\t\texp ' + self.exp_type + ' ' +self.experiment_name + '\t\tnwords: ' + str(self.nwords)
+		return 'Block-object:\t' + str(self.bid) + '\tpp ' + str(self.pp_id) + '\t\texp ' + self.exp_type + ' ' +self.experiment_name + '\t\tnwords: ' + str(self.nwords) + '\tncwords: ' + str(self.ncwords)
 
 
 	def set_info(self):
@@ -220,32 +222,30 @@ class block:
 		return d
 		
 
-	def load_artifacts(self,use_corrected = True):
+	def load_artifacts(self):
 		'''Loads automatically generated artifact annotations.
 		WIP: extend to be able to specify which annotation type to load (manual / automatic)
 		'''
-		try:
-			self.xml = xml_cnn.xml_cnn(self, use_corrected = use_corrected)
-			self.xml.load()
-			# self.xml.xml2bad_epochs()
-			self.artifacts = [a for a in self.xml.artifacts if a.annotation == 'artifact' and a.correct != 'incorrect']
+		if os.path.isfile(combine_artifacts.make_xml_name(self.name)):
+			self.xml = combine_artifacts.bads(self.name)
+			self.artifacts = [a for a in self.xml.bads if a.annotation == 'artifact'] 
 			self.nartifacts = len(self.artifacts)
 			self.start_artifacts = [a.st_sample/1000 for a in self.artifacts]
 			self.duration_artifacts = [a.duration/1000 for a in self.artifacts]
 			self.total_artifact_duration = sum(self.duration_artifacts)
 			self.artifact_perc = self.total_artifact_duration/(self.duration_sample/1000)
-		except:
-			print('could not load xml cnn, artefacts.')
+		else:
+			print('could not load bads, (artefacts).')
 			self.artifacts,self.start_artifacts,self.duration_artifacts = 'NA', 'NA','NA'
 			self.total_duration,self.total_artifact_duration,self.artifact_perc, self.nartifacts = 0,0,0,0
 
 
-	def fit_ica(self,use_corrected = True, reject_artifacts= True,reject_channels = []):
-		handle_ica.fit(self,use_corrected = use_corrected, reject_artifacts= reject_artifacts,reject_channels = reject_channels)
+	def fit_ica(self, reject_artifacts= True,reject_channels = []):
+		handle_ica.fit(self, reject_artifacts= reject_artifacts,reject_channels = reject_channels)
 
 
-	def load_ica(self,use_corrected = True, rejected_artifacts = True,use_session_ica = False,filename_ica = ''):
-		handle_ica.load(self,use_corrected = use_corrected, rejected_artifacts = rejected_artifacts,use_session_ica = use_session_ica,filename_ica = filename_ica)
+	def load_ica(self, rejected_artifacts = True,use_session_ica = False,filename_ica = ''):
+		handle_ica.load(self, rejected_artifacts = rejected_artifacts,use_session_ica = use_session_ica,filename_ica = filename_ica)
 
 
 	def create_eog(self):
@@ -280,7 +280,9 @@ class block:
 					break
 		self.nallwords = self.nwords
 		self.nwords = len([w for w in self.words if w.usable])
+		self.ncwords = len([w for w in self.words if w.usable and hasattr(w,'pos') and w.pos.content_word])
 		self.nexcluded = self.nallwords - self.nwords
+
 
 	def load_orts(self):
 		'''create the ort object for all fids (file id) in the block  
