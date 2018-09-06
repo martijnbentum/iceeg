@@ -178,16 +178,18 @@ def add_clean_epochs(artifacts, default,fo = None, minimal_duration = 500):
 		if i == 0 and a.st_sample >=  minimal_duration: 
 			# print('add start artifact')
 			ep_id = '0.' + str(a.epoch_id)
-			epochs.append(make_new_clean_epoch(ep_id,0,a.st_sample-1,a,default))
+			epochs.append(make_new_clean_epoch(ep_id,0,a.st_sample,a,default))
 		if i != len(artifacts) -1: 
 			ep_id = str(a.epoch_id) + '.' + str(artifacts[i+1].epoch_id)
-			start = a.et_sample + 1
+			start = a.et_sample 
 			end = artifacts[i+1].st_sample 
 			epochs.append(make_new_clean_epoch(ep_id,start,end,a,default))
 		if i == len(artifacts) -1 and minimal_duration <= b.duration_sample - a.et_sample: 
 			# print('add end artifact')
 			ep_id = str(a.epoch_id) + '.0'
-			epochs.append(make_new_clean_epoch(ep_id,a.et_sample,b.duration_sample,a,default))
+			if hasattr(a,'block_et_sample'): end = a.block_et_sample - a.block_st_sample
+			else: end = b.duration_sample
+			epochs.append(make_new_clean_epoch(ep_id,a.et_sample,end,a,default))
 	# print(artifacts,999999999)
 	artifacts.extend(epochs)
 	artifacts.sort()

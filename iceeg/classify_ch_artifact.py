@@ -184,3 +184,4 @@ def generate_predictions_all_blocks(model_ch_cnn_name = None,fo=None,skip_presen
 			c = classify_channel_artifact(name =name,fo=fo,model_ch_cnn_name = model_ch_cnn_name)
 			if i == 0: c.generate_predicted()
 			else: c.generate_predicted()
+
