@@ -352,18 +352,45 @@ def load_exp(fo):
 	exp.add_all_sessions()
 	return exp
 
-def make_xml_all_pp(fo, minimal_clean_duration = 2000,minimal_artifact_duration = 1000, start_index = 0, exp = None):
+
+def get_names_output_files(model_name = 'rep-26_perc-20_fold-1_part-70_kernel-6_model7'):
+	'''Get the filenames of the perc files, which are output from a cnn model.
+
+	model_name  	name of the cnn model to generate the output files.
+	'''
+	fn = glob.glob(path.channel_snippet_annotation + model_name + '_pp*class.npy')
+	names = [f.split('model7_')[-1].split('_class.npy')[0] for f in fn]
+	return names
+
+def get_names_xml_files(model_name = 'rep-26_perc-20_fold-1_part-70_kernel-6_model7'):
+	'''Get the filenames of the perc files, which are output from a cnn model.
+
+	model_name  	name of the cnn model to generate the output files.
+	'''
+	fn = glob.glob(path.artifact_ch_cnn_xml + model_name + '*.xml')
+	names = [f.split('model7_')[-1].split('.xml')[0] for f in fn]
+	return names
+
+
+def make_xml_all_pp(fo, minimal_clean_duration = 2000,minimal_artifact_duration = 1000, start_index = 0, overwrite = False):
+	names_of = []
+	temp= get_names_output_files()
+	names_xml = get_names_xml_files()
+	if not overwrite:
+		for name in temp:
+			if not name in names_xml:
+				names_of.append(name)
+	else: names_of = temp
+	print('found ',len(temp), 'output files in channels snippet annotation')
+	print('found ',len(names_xml), 'xml files in artifact ch cnn xml')
+	print('overwrite is:',overwrite)
+	print('saving:',len(names_of),'files in xml format')
+				
 	xml = []
-	missing_data_blocks = []
 	xml_not_loaded_blocks = []
-	if exp == None: exp = load_exp(fo)
-	for i,b in enumerate(exp.blocks[start_index:]):
+	for i,name in enumerate(names_of):
+		b = utils.name2block(name,fo)
 		print(i,b.pp_id,b.exp_type,b.bid)
-		n = windower.make_name(b)
-		if not os.path.isfile(path.eeg100hz + n + '.npy'): 
-			print(path.eeg100hz + n + '.npy', 'file not found.')
-			missing_data_blocks.append(b)
-			continue
 		x = xml_ch_cnn(b,minimal_clean_duration = minimal_clean_duration,minimal_artifact_duration=minimal_artifact_duration)
 		if x.loaded:
 			x.make_bad_channels()
@@ -373,6 +400,30 @@ def make_xml_all_pp(fo, minimal_clean_duration = 2000,minimal_artifact_duration 
 		else: 
 			print('No xml file for:\n',b)
 			xml_not_loaded_blocks.append(b)
-	return xml, missing_data_blocks, xnlb,exp
+	return xml 
+
+
+def get_names_manually_annotated():
+	fn = glob.glob(path.channel_artifact_training_data + 'pp*exp*data.npy')
+	names = [f.split('/')[-1].rstrip('_data.npy') for f in fn]
+	print('found: ',len(names),' files')
+	return names
+
+def make_xml_manually_annotated(fo, minimal_clean_duration = 2000, minimal_artifact_duration=1000):
+	names = get_names_manually_annotated()
+	xml = []
+	for name in names:
+		b = utils.name2block(name,fo)
+		x = xml_ch_cnn(b,minimal_clean_duration = minimal_clean_duration,minimal_artifact_duration=minimal_artifact_duration)
+		if x.loaded:
+			x.make_bad_channels()
+			x.bad_channel2xml()
+			x.write()
+			xml.append(x)
+		else: 
+			print('No xml file for:\n',b)
+			xml_not_loaded_blocks.append(b)
+	return xml 
+
 	
 
