@@ -100,6 +100,11 @@ class note():
 		'''Show info about the note.'''
 		print(self.str())
 
+	def show_general_notes(self):
+		m = '\nGeneral notes\n'+'-'*13+'\n'
+		m += '\n'.join([line[0].ljust(20) + line[1] for line in dict_to_list(self.general_notes)[:-3]])
+		return m
+
 
 	def set_note(self,note = ''):
 		'''Set note of the note object, str containing information about block /annotation.'''
