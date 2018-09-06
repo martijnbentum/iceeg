@@ -1,5 +1,6 @@
 import copy
 import load_all_ort 
+import threading
 import session
 import utils
 import windower
@@ -65,7 +66,7 @@ class Experiment:
 		for p in self.pp:
 			p.add_session(session_name)
 			self.sessions.extend(p.sessions)
-			self.blocks.extend(p.blocks)
+			self.blocks.extend(getattr(p,'s'+ session_name).blocks)
 		self.calc_nwords()
 
 	def calc_nwords(self):
@@ -74,7 +75,7 @@ class Experiment:
 			self.nwords += p.nwords
 
 
-	def all_names(self):
+	def all_name(self):
 		self.names = []
 		for b in self.blocks:
 			self.names.append(windower.make_name(b))
