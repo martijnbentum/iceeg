@@ -6,7 +6,7 @@ import mne.preprocessing.ica as ica
 import path
 
 
-def fit(self,use_corrected = True, reject_artifacts= True,reject_channels = []):
+def fit(self, reject_artifacts= True,reject_channels = [], block_indices = []):
 	'''Fit ica on block object.
 	EEG data is bandpassed filtered on 1-30 Hz, the ica solution can be used on data
 	without or different bandpass filter see:
@@ -14,26 +14,23 @@ def fit(self,use_corrected = True, reject_artifacts= True,reject_channels = []):
 	On the influence of high-pass filtering on ICA-based artifact reduction in EEG-ERP
 	WIP: extend to be able to set ica approach (with or without artifact rejection, filename)
 	
-	use_corrected 		whether to use the corrected xml files (based on cnn classification)
 	both_reject_all 	whether to fit ica with and without rejected artifacts
 	'''
 	self.ica_rejected_channels = reject_channels
-	self.use_corrected = use_corrected
 	self.reject_artifacts = reject_artifacts
 	if hasattr(self,'raw') and self.raw.info['highpass'] < 1: self.eeg_load = False
 	if not self.eeg_loaded: 
-		try:self.load_eeg_data(freq = [1,30])
+		try:self.load_eeg_data(freq = [1,30], block_indices = block_indices)
 		except: return 0
 	self.raw.info['bads'] = self.ica_rejected_channels
 	self.ica = ica.ICA()
 	if type(self) == block.block and self.artifacts != 'NA':
-		self.load_artifacts(use_corrected)
+		self.load_artifacts()
 		print('Setting artefact annotation to mne format')
 		self.raw.annotations = mne.Annotations(self.start_artifacts,self.duration_artifacts,'BAD')
 	if self.reject_artifacts:
 		print('Excluding artefacts and fitting ica')
-		if self.use_corrected: identifier = '_corrected_no-artifact-ica.fif'
-		else: identifier = '_no-artifact-ica.fif'
+		identifier = '_no-artifact-ica.fif'
 		self.ica_filename = path.ica_solutions + self.make_name() + identifier
 	else:
 		self.ica_filename = path.ica_solutions + self.make_name() + '_all-data-ica.fif'
@@ -43,13 +40,10 @@ def fit(self,use_corrected = True, reject_artifacts= True,reject_channels = []):
 	self.create_eog()
 
 
-def load(self,use_corrected = True, rejected_artifacts = True,use_session_ica = False,filename_ica = ''):
-	self.ica_use_corrected = use_corrected
+def load(self, rejected_artifacts = True,filename_ica = ''):
 	self.ica_rejected_artifacts = rejected_artifacts
-	if use_session_ica: name = 'pp' + str(self.pp_id) + '_' + self.exp_type
-	else: name = self.make_name()
-	if use_corrected: self.ica_filename = name +'_corrected_no-artifact-ica.fif'
-	else: self.ica_filename = name + '_no-artifact-ica.fif'
+	name = self.make_name()
+	self.ica_filename = name + '_no-artifact-ica.fif'
 	if not rejected_artifacts: self.ica_filename = name + '_all-data-ica.fif'
 		
 	self.ica = mne.preprocessing.read_ica(path.ica_solutions + self.ica_filename) 
@@ -98,7 +92,7 @@ def on_click(event,self):
 	print(self.eog.print_xml())
 	return True
 	
-def plot(self, ncomponents = 25, selected_and_deleted = False):
+def plot(self, ncomponents = 20, selected_and_deleted = False):
 	if not hasattr(self,'ica'): self.load_ica()
 	self.ica.exclude = self.eog.comps
 	self.ica_plot = self.ica.plot_components(range(ncomponents))
@@ -126,9 +120,9 @@ def plot_overlay(self,nplots = 10):
 		return
 	if not hasattr(self,'nblinks') or self.nblinks == 0: 
 		print('no blinks, doing nothing')
-	self.plot_overlay_indices = list(range(self.nblinks))
 	if self.nblinks < nplots: nplots = self.nblinks
-	[self.ica.plot_overlay(self.raw,start = self.blink_start[i], stop = self.blink_stop[i]) for i in self.plot_overlay_indices]
+	ii= list(range(nplots))
+	[self.ica.plot_overlay(self.raw,start = self.blink_start[i], stop=self.blink_end[i]) for i in ii]
 
 
 
