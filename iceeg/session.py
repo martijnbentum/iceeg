@@ -259,6 +259,7 @@ class Session:
 		b_names = '-'.join(['b' + str(i+1) for i in self.current_block_indices])
 		return 'pp' + str(self.pp_id) + '_' + self.exp_type + '_' + b_names
 
+
 def reload(s):
 	'''Reload a session object for testing and debugging. '''
 	return Session(s.pp_id,s.exp_type,s.fid2ort)
