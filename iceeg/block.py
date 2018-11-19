@@ -348,6 +348,61 @@ class block:
 		return 'pp'+str(self.pp_id) + '_exp-' + str(self.exp_type) + '_bid-' + str(self.bid)
 
 
+	def add_speaker_info(self):
+		self.speaker_infos = []
+		fid = ' '.join(self.fids)
+		for sid in self.sids:
+			self.speaker_infos.append(speaker_info(sid,fid,self.corpus))
+			
+			
+
+class speaker_info():
+	def __init__(self, sid, fid, corpus):
+		self.sid = sid
+		self.fid = fid
+		self.corpus = corpus
+		if corpus == 'CGN':
+			self.subject_info_fn = path.data + 'cgn_speakers.txt'
+			temp = [l for l in open(self.subject_info_fn).read().split('\n') if l]
+			temp = [l for l in temp if len(l.split('\t')) > 6 and l.split('\t')[4] == self.sid]
+			self.speaker_info_str = temp[0]
+			temp = self.speaker_info_str.split('\t')
+			self.sex = 'male' if temp[5] == 'sex1' else 'female'
+			self.birth_year = temp[6]
+			try: self.age = 2000 - int(self.birth_year)
+			except: self.age = 'NA'
+		if self.corpus == 'IFADV':
+			self.recording_info_fn = path.data + 'IFADV_ANNOTATION/recordings_table.txt'
+			temp = [l for l in open(self.recording_info_fn).read().split('\n')]
+			temp = [l for l in temp if self.fid in l.split('\t')]
+			self.speaker_id = temp[0].split('\t')[2] if sid == 'spreker1' else temp[0].split('\t')[3]
+			self.subject_info_fn = path.data + 'IFADV_ANNOTATION/subjects_table.txt'
+			temp = [l for l in open(self.subject_info_fn).read().split('\n') if l]
+			temp = [l for l in temp if self.speaker_id == l.split('\t')[2]]
+			self.speaker_info_str = temp[0] 
+			temp = self.speaker_info_str.split('\t')
+			self.sex = 'male' if temp[0] == 'M' else 'female'
+			self.age = int(temp[1])
+
+	def __repr__(self):
+		m = '   \t'.join([self.corpus,self.sid,self.sex,str(self.age)])
+		if self.corpus == 'IFADV': m += '   \t'+self.speaker_id
+		return m
+
+	def __str__(self):
+		m = 'corpus:\t\t' + self.corpus + '\n'
+		m += 'sid:\t\t' + self.sid + '\n'
+		m += 'fid:\t\t' + self.fid + '\n'
+		m += 'filename:\t'+self.subject_info_fn +'\n'
+		m += 'sex:\t\t' + self.sex + '\n'
+		m += 'age:\t\t' + str(self.age) 
+		if self.corpus == 'CGN':
+			m+= '\tapproximate, recording date uncertain; based on birth year\n'
+			m+= 'birth year\t' + self.birth_year
+		else: m += '\nspeaker_id\t' + self.speaker_id
+		return m
+
+
 			
 def reload(b):
 	return block(b.pp_id,b.exp_type,b.vmrk,b.log,b.bid, b.fid2ort)
