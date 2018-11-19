@@ -17,7 +17,7 @@ class corrector:
 	You can annotate epoch, channels and notes, with channels you can indicate
 	to enforce only to show those blocks that are already epoch annotated.
 	'''
-	def __init__(self,coder_name,exp,bid = 1,pp_id = 1,fo = None,save_dir = '',annotation_type = 'corrector', skip_corrected = True,names_list = []):
+	def __init__(self,coder_name,exp,bid = 1,pp_id = 1,fo = None,save_dir = '',annotation_type = 'corrector', skip_corrected = True,names_list = True):
 		'''annotate all blocks of an experiment based on names list of blocks.
 		coder_name 			name of annotator
 		exp 				experiment name: o, k, ifdav
@@ -27,23 +27,26 @@ class corrector:
 		save_dir 			provide other directory for saving
 		annotation type 	corrector (epoch), channel_corrector (channel,note)
 		skip_corrected 		do not show blocks that already have a file in save_dir
-		names_list 			list of block file names
+		names_list 			whether to use list of block file names
 		'''
 		
 		self.coder_name = coder_name
 		self.exp = exp
 		self.bid = bid
 		self.pp_id = pp_id
+		self.annotation_type = annotation_type
 		if fo == None: self.fo = load_all_ort.load_fid2ort()
 		else: self.fo = fo
 		if save_dir == '': 
 			if annotation_type == 'corrector':
 				self.save_dir = path.corrected_artifact_cnn_xml 
-				if names_list == True: self.names_list = read_names(exp)
+				if type(names_list) == list: self.names_list = names_list
+				elif names_list == True: self.names_list = read_names(exp)
 				self.coder = self.coder_name + '-' +self.annotation_type
 			if annotation_type == 'channel_corrector': 
 				self.save_dir = path.corrected_ch_cnn_xml
-				if names_list == True: self.names_list = read_ch_names(exp)
+				if type(names_list) == list: self.names_list = names_list
+				elif names_list == True: self.names_list = read_ch_names(exp)
 				self.coder = self.coder_name + '-ch-corrector' 
 		else: self.save_dir = save_dir
 		self.annotation_type = annotation_type
@@ -135,6 +138,16 @@ class corrector:
 		if os.path.isfile(self.save_dir + self.corrected_filename) and self.skip_corrected:
 			self.load_next_name()
 			return 0
+		elif self.annotation_type == 'channel_corrector':
+			n = path.corrected_artifact_cnn_xml + 'tim-corrector_' + self.name + '.xml'
+			n1 = path.corrected_artifact_cnn_xml + 'martijn-corrector_' + self.name + '.xml'
+			n2 = path.corrected_artifact_cnn_xml + 'rep-3_perc-50_fold-2_part-90_' + self.name + '.xml'
+			if not os.path.isfile(n) and not os.path.isfile(n1) and not os.path.isfile(n2):
+				print(n,'not found',self.name)
+				print(n1,'not found')
+				print(n2,'not found')
+				self.load_next_name()
+				return 0
 		self.b = utils.name2block(name=self.name,fo= self.fo)
 			
 		# self.m = mac.ac(self.b, coder = self.coder, annotation_type = self.annotation_type)
@@ -166,7 +179,7 @@ class corrector:
 
 
 	def load_next_note(self):
-		'''When annotating notes, this will check whether a not exists 
+		'''When annotating notes, this will check whether a note exists 
 		and whether usability is annotated.
 		'''
 		self.clean_up()
