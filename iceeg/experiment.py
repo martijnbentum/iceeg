@@ -1,6 +1,8 @@
 import copy
 import load_all_ort 
+import path
 import threading
+import string
 import session
 import utils
 import windower
@@ -144,6 +146,26 @@ class Participant:
 		
 		
 			
+	def print_session(self, exp_type = 'o',lower = True,save = True, fix_apostrophe = True):
+		output = []
+		if not hasattr(self,'s'+exp_type): self.add_session(exp_type)
+		for b in getattr(self,'s'+exp_type).blocks:
+			for i,s in enumerate(b.sentences):
+				string_sentence = s.string_utf8_words_no_diacritics(fix_apostrophe)
+				if lower: string_sentence = string_sentence.lower()
+				output.append([str(i),str(s.sentence_number),str(s.sid),str(b.bid),string_sentence])
+		setattr(self,exp_type +'_sentence_info', output)
+		setattr(self,exp_type +'_sentence_strings', [line[-1] for line in output])
+		if save:
+			s = '\n'.join(['\t'.join(line) for line in output])
+			with open(path.data + 'sentence_info_' + exp_type,'w') as fout:
+				fout.write(s)
+			s = '\n'.join([line[-1] for line in output])
+			with open(path.data + 'sentence_strings_' + exp_type,'w') as fout:
+				fout.write(s)
+
+		
+	
 
 		
 
