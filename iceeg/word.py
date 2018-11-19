@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
  
 import codecs
+import gensim
 import glob
 import string
 
@@ -153,6 +154,12 @@ class Word:
 		for eol in ['.','!','?']:
 			self.word_nocode = self.word_nocode.replace(eol,'')
 			self.word_utf8_nocode = self.word_utf8_nocode.replace(eol,'')
+		
+	def word_utf8_nocode_nodia(self,fix_apostrophe = True):
+		if fix_apostrophe:
+			return apply_fix_apostrophe(deaccent_text(self.word_utf8_nocode))
+		else: deaccent_text(self.word_utf8_nocode)
+
 
 
 	def make_pos_info(self):
@@ -221,4 +228,25 @@ class Word:
 		self.usable = False
 
 
+def deaccent_text(text):
+    t = ''
+    ac = 'áàèéêëúüçćîïíīìôöòóō'
+    deaccented_chars = 0
+    for i,ch in enumerate(text):
+        if ch in ac:
+            t += gensim.utils.deaccent(ch)
+            deaccented_chars += 1
+        else: t += ch
+    return t
 
+def make_apostrophe_dict():
+	source = "z'n,d'rvan,d'r,'r,'tzelfde,'t,'ns,m'n,zo'n,'k,'m,'s,'rzelf,d'ruit,'n,da's,d'raan".split(',')
+	goal = "zijn,daarvan,der,er,hetzelfde,het,eens,mijn,zoeen,ik,hem,is,haarzelf,daaruit,een,datis,daaraan".split(',')
+	return dict(zip(source,goal))
+
+def apply_fix_apostrophe(w):
+	ad = make_apostrophe_dict()
+	for k in ad.keys():
+		if w == k: return ad[k]
+	if w.endswith("'s"):return w.replace("'s",'s')
+	return w
