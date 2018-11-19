@@ -76,6 +76,12 @@ class Sentence:
 			output.append( w.word_utf8_nocode )
 		return ' '.join(output)
 
+	def string_utf8_words_no_diacritics(self, fix_apostrophe = True):
+		'''Create an utf8 sentence out of all words in the sentence'''
+		output = []
+		for w in self.words:
+			output.append( w.word_utf8_nocode_nodia(fix_apostrophe) )
+		return ' '.join(output)
 
 	def find_chunk_numbers(self):
 		'''Create a list of all chunk numbers of the words in the sentence
@@ -123,3 +129,4 @@ class Sentence:
 		'''set sample time based on the start and end sample of first and last word respectively.'''
 		self.st_sample = self.words[0].st_sample
 		self.et_sample = self.words[0].et_sample
+
