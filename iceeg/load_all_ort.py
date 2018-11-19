@@ -56,7 +56,7 @@ def make_fid2ort(verbose = False):
 def save_fid2ort(fid2ort):
 	'''Save fid2ort in a pickle to the data directory.'''
 	fout = open(path.data + 'fid2ort.dict','wb')
-	pick.dump(fid2ort,fout,-1)
+	pickle.dump(fid2ort,fout,-1)
 	fout.close()
 
 def load_fid2ort():
