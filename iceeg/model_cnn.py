@@ -161,7 +161,7 @@ class model_deep_artifact:
 		self.ground_truth = np.concatenate((temp1,temp2))
 
 		if add_adjustment:
-			# DOES NOT MAKE SENSE TO USE ccn_output_model one eval, because it only works on ordered windows
+			# DOES NOT MAKE SENSE TO USE ccn_output_model on eval, because it only works on ordered windows
 			self.clean_up()
 			self.predicted_perc = np.concatenate((self.predict_artifacts_perc,self.predict_clean_perc))
 			do = cnn_output_data.cnn_output2data(predicted_perc = self.predicted_perc[:,1])
