@@ -9,9 +9,6 @@ import path
 import utils
 import xml_handler
 
-
-
-
 class bads():
 	'''Object to contain bad epoch and bad channels
 	bad channels will be converted to bad epochs if they are bad les than ch_theshold of the block.
