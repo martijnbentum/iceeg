@@ -57,6 +57,7 @@ class ac:
 		if remove_ch != None and type(remove_ch) == list: self.remove_ch = remove_ch
 		else: self.remove_ch = ['VEOG','HEOG','TP10_RM','STI 014','LM']
 		if add_channel_to_remove != '': self.remove_ch.append(add_channel_to_remove)
+			
 		self.load_eeg()
 		self.set_info()
 		self.length = int(float(length) * sf)
@@ -70,29 +71,34 @@ class ac:
 		self.complete_bad_channel = []
 		self.last_bad_epoch_id = int(open(path.artifacts +'last_bad_epoch_id').read())
 		self.load_from_xml(filename)
+
 		self.last_save = time.time()
 		self.make_epoch()
 		self.offset_value = offset_value
+
 		if len(self.bad_channels) > 0:
 			self.channel_artifact_selected = min(self.bad_channels)
 			self.bigger_bc = self.bad_channels[:]
 			index = self.bigger_bc.index(self.channel_artifact_selected)
 			self.smaller_bc = [self.bigger_bc.pop(index)]
+		else:
+			if self.annotation_type == 'channel_corrector' and len(self.bad_channels) == 0:
+				print('\n\n\nNo bad_channels nothing to be done, copying file to corrected folder')
+				c = 'cp '+self.filename_channels+' '+path.corrected_ch_cnn_xml+self.filename.split('/')[-1] 
+				print('copying: ', self.filename.split('/')[-1], 'to: ', path.corrected_ch_cnn_xml) 
+				os.system(c)
+				return None
+
 		self.plot_epoch('all',offset_value = self.offset_value)
 		self.channel_mode_index = self.channels.index(self.channel_artifact_selected.channel)
 		self.reset_visible()
 		self.handle_plot(True)
 		self.redraw = False
+
 		if self.annotation_type == 'corrector' and len(self.bad_epochs) == 0:
 			print('\n\n\nNo bad_epochs nothing to be done, copying file to corrected folder')
 			c = 'cp '+self.filename+' '+path.corrected_artifact_cnn_xml+self.filename.split('/')[-1] 
 			print('copying: ', self.filename.split('/')[-1], 'to: ', path.corrected_artifact_cnn_xml) 
-			os.system(c)
-			plt.close(self.fig)
-		elif self.annotation_type == 'channel_corrector' and len(self.bad_channels) == 0:
-			print('\n\n\nNo bad_channels nothing to be done, copying file to corrected folder')
-			c = 'cp '+self.filename_channels+' '+path.corrected_artifact_ch_cnn_xml+self.filename.split('/')[-1] 
-			print('copying: ', self.filename.split('/')[-1], 'to: ', path.corrected_artifact_ch_cnn_xml) 
 			os.system(c)
 			plt.close(self.fig)
 		else: self.run()
