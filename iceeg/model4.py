@@ -35,19 +35,9 @@ def next_batch(data,info, batch_size):
 
 
 def deepnn(x,nchannels,nsamples,fmap_size = 2400):
-	"""deepnn builds the graph for a deep net for classifying digits.
-	Args:
-		x: an input tensor with the dimensions (N_examples, 784), where 784 is the
-		number of pixels in a standard MNIST image.
-	Returns:
-		A tuple (y, keep_prob). y is a tensor of shape (N_examples, 10), with values
-		equal to the logits of classifying the digit into one of 10 classes (the
-		digits 0-9). keep_prob is a scalar placeholder for the probability of
-		dropout.
+	"""deepnn builds the graph for a deep net for classifying EEG data.
 	"""
 	# Reshape to use within a convolutional neural net.
-	# Last dimension is for "features" - there is only one here, since images are
-	# grayscale -- it would be 3 for an RGB image, 4 for RGBA, etc.
 	with tf.name_scope('reshape'):
 		print(x)
 		# x_image = tf.reshape(x, [-1, 24, 100, 1])
