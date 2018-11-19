@@ -59,6 +59,7 @@ class Sid:
 		utils.make_attributes_available(self,'s',self.sentences)
 		utils.make_attributes_available(self,'c',self.chunks)
 
+
 	def __str__(self):
 		a = ['file id:\t' + self.fid ]
 		a.append('corpus:\t\t'+str(self.corpus))
@@ -256,3 +257,4 @@ class Sid:
 		for w in self.words:
 			if w.pos_ok and w.pos.content_word:
 				self.ncontent_words += 1
+
