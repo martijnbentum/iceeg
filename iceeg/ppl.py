@@ -1,9 +1,9 @@
 import path
 
 class word2ppl:
-	'''Converts SRILM ngram output (debug -2) to an object with probablistic information.'''
+	'''Converts SRILM ngram output (debug 2) to an object with probablistic information.'''
 	def __init__(self,exp = 'o'):
-		'''Converts SRILM ngram output (debug -2) to an object with probablistic information.
+		'''Converts SRILM ngram output (debug 2) to an object with probablistic information.
 		exp 	sets the experiment expects the files sentence_info_[exp] sentence_strings_[exp]
 				and ppl_[exp] to exists in the data directory: EEG_DATA_ifadv_cgn/
 		'''
@@ -29,13 +29,14 @@ class word2ppl:
 
 	def read_files(self):
 		'''OUTPUT:
-		self.infos, holds sentence info, unsure how it is made SHOULD CHECK
+		self.infos, holds sentence info, sentence_info file made with p.print_session (part of participant in experiment.py)
 		self.strings, holds the string representation of each sentence
 		self.ppls, holds the output of the SRILM ngram call
 		'''
 		exp = self.exp
 		self.infos = [line.split('\t') for line in open(path.data +'sentence_info_' + exp,encoding = 'utf-8').read().split('\n')]
 		self.strings = open(path.data+'sentence_strings_' + exp,encoding = 'utf8').read().split('\n')
+		# should make ppl filename more genral
 		self.ppls = open(path.data+'ppl_' + exp,encoding = 'utf-8').read().split('\n\n')
 
 
