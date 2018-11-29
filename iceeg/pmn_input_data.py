@@ -27,6 +27,9 @@ class pmn_data():
 					precontext = [w.word_utf8_nocode for w in precontext]
 					self.pmn_words.append(pmn_word(word,precontext))
 
+		
+		
+
 	def make_chunk_speaker_file(self,offset = 0.5, small = False):
 		'''Create lists with information for KALDI.
 		offset 		n seconds after word onset
@@ -39,8 +42,9 @@ class pmn_data():
 		self.chunks = []
 		self.speakers = []
 		self.small = small
+		self.offset = offset
 		for i,w in enumerate(self.pmn_words):
-			self.chunks.append(w.format(i+1,offset=offset))
+			self.chunks.append(w.format(make_number(i+1,len(self.pmn_words)),offset=offset))
 			if w.word.sid not in self.speaker2f.keys():
 				self.speaker2f[w.word.sid] = [self.chunks[-1].split(' ')[0]]
 			else: self.speaker2f[w.word.sid].append(self.chunks[-1].split(' ')[0])
@@ -52,8 +56,9 @@ class pmn_data():
 
 	def save(self):
 		'''Save KALDI helper files created with make_chunk_speaker_file().'''
-		fc = 'chunks.txt'
-		if self.small: fc = 'chunks_small.txt'
+		fc = 'chunks'
+		if self.small: fc = 'chunks_small'
+		fc += '_' + str(int(1000 * self.offset)) +'.txt'
 		fs = 'speakers.txt'
 		if self.small: fs = 'speakers_small.txt'
 		with open(fc,'w') as fout: fout.write('\n'.join(self.chunks))
@@ -92,4 +97,8 @@ class pmn_word():
 					
 					
 		
+def make_number(i, ntokens):
+	ndigits = len(str(ntokens)) + 1
+	diff = ndigits - len(str(i))
+	return '0'*diff + str(i)
 
