@@ -20,7 +20,16 @@ class Sid:
 	'''
 
 	def __init__(self,fid = None,sid = 'spreker1',path = '../IFADV_ANNOTATION/ORT/',awd_path= '../IFADV_ANNOTATION/AWD/WORD_TABLES/',corpus = 'IFADV',pos_path = 'POS_IFADV/FROG_OUTPUT/',register = 'spontaneous_dialogue',set_verbose = False):
-		'''Speaker object holds the utterances of a speaker in the audio file.'''
+		'''Speaker object holds the utterances of a speaker in the audio file.
+		fid 	file id, filename of the orthographic transcription
+		sid 	speaker id, name (in corpus) of the speaker
+		path 	directory of ortographic annotations (migrate to path module?)
+		awd_... directory of forced aligned annotations
+		corpus 	corpus that is the source of the materials
+		pos_... directory of the part speech tag annotations
+		regi... the type of speech
+		set_... whether messages are printed to the screen
+		'''
 		global verbose
 		verbose = set_verbose
 		if fid == None:
