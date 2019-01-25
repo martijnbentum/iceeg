@@ -191,7 +191,7 @@ class corrector:
 		else: annotate = False
 		if annotate:
 			self.b = utils.name2block(self.name,self.fo)
-			self.m = mac.ac(self.b, coder = self.coder, annotation_type = self.annotation_type,add_channel_to_remove = 'Fp2',enforce_coder=False)
+			self.m = mac.ac(self.b, coder = self.coder, annotation_type = self.annotation_type,add_channel_to_remove = 'Fp2',enforce_coder=False,skip_empty = False)
 		else: 
 			print(self.name,'already annotated')
 			self.note.show()
