@@ -7,6 +7,7 @@ current_directory = os.path.dirname(os.path.abspath(__file__))
 if os.path.isdir('/Volumes/BAK4TB/'): bak = '/Volumes/BAK4TB/'
 if os.path.isdir('/Volumes/Bigstorage/BAK/'): bak = '/Volumes/Bigstorage/BAK/'
 if os.path.isdir('/Volumes/BAK1TB/'): bak = '/Volumes/BAK1TB/'
+if os.path.isdir('/Volumes/storage/bak/'): bak = '/Volumes/storage/bak/'
 
 if os.path.isdir('/Volumes/WINDOW/EEG/'): volume = '/Volumes/WINDOW/'
 elif os.path.isdir('/Volumes/storage/'): volume = '/Volumes/storage/'
@@ -73,3 +74,10 @@ channel_cnn_output_data = bak + 'CHANNEL_CNN_OUTPUT_DATA/'
 
 # eog = ica_solutions + 'EOG/'
 bads_annotations= data + 'BADS_ANNOTATIONS/'
+
+nbest = bak + 'NBEST/'
+pdf = bak + 'PDF/'
+pronprob = bak + 'PRONPROB/'
+
+n400_words = bak + 'N400/'
+datasets = data + 'DATASETS/'
