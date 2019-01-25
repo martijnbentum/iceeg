@@ -40,16 +40,16 @@ def fit(self, reject_artifacts= True,reject_channels = [], block_indices = []):
 	self.create_eog()
 
 
-def load(self, rejected_artifacts = True,filename_ica = ''):
+def load(self, rejected_artifacts, filename_ica = ''):
 	self.ica_rejected_artifacts = rejected_artifacts
-	name = self.make_name()
-	self.ica_filename = name + '_no-artifact-ica.fif'
-	if not rejected_artifacts: self.ica_filename = name + '_all-data-ica.fif'
+	if filename_ica == '':
+		name = self.make_name()
+		self.ica_filename = path.ica_solutions + name + '_no-artifact-ica.fif'
 		
-	self.ica = mne.preprocessing.read_ica(path.ica_solutions + self.ica_filename) 
+	self.ica = mne.preprocessing.read_ica(self.ica_filename) 
 	self.eog_filename = self.ica_filename.replace('ica.fif','eog.xml')
 	self.eog = eog.load(self.eog_filename) #not all eog corr are present
-	if not self.eog:
+	if not self.eog and hasattr(self,'ica'):
 		self.create_eog()
 	self.ica.exclude = self.eog.comps
 	if hasattr(self,'raw'): self.raw.info['bads'] = self.eog.rejected_channels
