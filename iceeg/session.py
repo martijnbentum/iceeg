@@ -14,6 +14,7 @@ import mne.preprocessing.ica as ica
 import numpy as np
 import pandas as pd
 import path
+import ppl
 import re
 import utils
 import vmrk
@@ -63,6 +64,7 @@ class Session:
 		self.n_eeg_recordings = self.vmrk.n_eeg_recordings
 		self.set_start_end_times() # start end times experiment
 		self.nblocks = self.log.log['block'].values[-1]
+		self.ppl = ppl.word2ppl(exp = self.exp_type)
 		self.load_blocks()
 		utils.make_attributes_available(self,'b',self.blocks)
 		self.eeg_loaded = False
@@ -134,6 +136,7 @@ class Session:
 			if self.total_duration == 0: self.artifact_perc = 0
 			else: self.artifact_perc = self.total_artifact_duration / self.total_duration
 		self.nblocks = len(self.blocks)
+		[self.ppl.add_ppl_to_words(b) for b in self.blocks]
 
 	def make_blocks_available(self):
 		'''make block available on object as a property .b1 .b2 .b3 etc.'''
