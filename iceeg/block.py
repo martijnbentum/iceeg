@@ -6,6 +6,7 @@ the module is used by the experiment class
 # import blinks
 import combine_artifacts
 import eog
+import glob
 import handle_ica
 import mne
 import mne.preprocessing.ica as ica
@@ -142,11 +143,12 @@ class block:
 			self.sample_inacc = None
 
 
-	def load_eeg_data(self, sf = 1000,freq = [0.05,30], add_remove_channel = ''):
+	def load_eeg_data(self, sf = 1000,freq = [0.05,30], apply_ica = True, add_remove_channel = ''):
 		'''Load eeg data corresponding to this block.
 		sf 		sample frequency, set lower to downsample
 		freq 	the frequency of the iir bandpass filter (see preprocessing.py)
 		'''
+		if apply_ica and not hasattr(self,'ica'): self.load_ica()
 		
 		self.raw = preprocessing.load_block(self, sf = sf,freq = freq)
 		if self.raw != 0: 
@@ -155,6 +157,9 @@ class block:
 			print('could not load raw')
 		if hasattr(self,'eog'): self.raw.info['bads'] = self.eog.rejected_channels
 	
+		if apply_ica and hasattr(self,'ica'): self.ica.apply(self.raw)
+		elif not apply_ica: print('loaded raw eeg, did not apply ica')
+		else: print('could not apply ica, because ica file is not available')
 
 	def unload_eeg_data(self):
 		'''Unload eeg data.'''
@@ -183,24 +188,6 @@ class block:
 			self.blinks_text,self.blink_peak_sample,self.nblinks = 'NA','NA','NA'
 			self.blink_start, self.blink_end = 'NA','NA'
 			return False
-
-
-	def zero_blinks(self, d = None,picks = 'eeg'):
-		if not self.eeg_loaded: return False
-		if not self.load_blinks(offset = 500): return False
-		self.annotate_blinks()
-		if type(d) != type(self.raw[:][0]): 
-			if picks == 'eeg': 
-				i = mne.pick_types(self.raw.info,eeg=True)
-				d = self.raw[i,:][0] * 10 ** 6
-			else: d = self.raw[:][0] * 10 ** 6 
-		for start,end in zip(self.blink_start_sample,self.blink_end_sample):
-			if start < 0: start = 0
-			if end < 0: continue
-			print(start,end)
-			d[:,start:end] = 0
-		return d
-			# self.raw[:,start:end][0] = 0
 
 
 	def annotate_blinks(self):
@@ -240,29 +227,26 @@ class block:
 			self.total_duration,self.total_artifact_duration,self.artifact_perc, self.nartifacts = 0,0,0,0
 
 
-	def fit_ica(self, reject_artifacts= True,reject_channels = []):
-		handle_ica.fit(self, reject_artifacts= reject_artifacts,reject_channels = reject_channels)
+	def load_ica(self):
+		s = 'pp' + str(self.pp_id) + '_' + self.exp_type +'*b' + str(self.bid) + '*ica.fif'
+		fn = glob.glob(path.ica_solutions + s)
+		for f in fn:
+			if 'b'+str(self.bid) in f.split('_')[-2].split('-'): self.ica_filename = f
+		if not hasattr(self,'ica_filename'):
+			print('did not find ica filename, search string:',s,fn)
+			self.ica_filename = None
+		else: 
+			print('loading ica with:',self.ica_filename)
+			handle_ica.load(self, rejected_artifacts = True,filename_ica = self.ica_filename)
 
-
-	def load_ica(self, rejected_artifacts = True,use_session_ica = False,filename_ica = ''):
-		handle_ica.load(self, rejected_artifacts = rejected_artifacts,use_session_ica = use_session_ica,filename_ica = filename_ica)
-
-
-	def create_eog(self):
-		'''Create eog object with correlation between ICA components and eog channels.
-		save it to xml file
-		'''
-		if not hasattr(self,'raw'): self.load_eeg_data()
-		if not hasattr(self,'ica'): self.load_ica()
-		else:
-			self.eog_comp, self.eog_scores = self.ica.find_bads_eog(self.raw,reject_by_annotation = False)
-			self.eog = eog.eog(scores = self.eog_scores, comps= self.eog_comp,b = self, ica_filename = self.ica_filename, filename = self.ica_filename.replace('ica.fif','eog.xml'),name = self.make_name(),rejected_channels = self.ica_rejected_channels)
-			self.eog.write()
 		
 	def plot_ica(self):
+		if not hasattr(self,'ica'): self.load_ica()
 		handle_ica.plot(self)
 
+
 	def plot_overlay(self,nplots = 10):
+		if not hasattr(self,'ica'): self.load_ica()
 		handle_ica.plot_overlay(self,nplots)
 
 
@@ -282,6 +266,34 @@ class block:
 		self.nwords = len([w for w in self.words if w.usable])
 		self.ncwords = len([w for w in self.words if w.usable and hasattr(w,'pos') and w.pos.content_word])
 		self.nexcluded = self.nallwords - self.nwords
+
+
+	def extract_words(self, content_word = True, epoch_type = 'epoch'):
+		if not hasattr(self,'raw'): self.load_eeg_data()
+		if not hasattr(self,'data'): 
+			if epoch_type in ['epochn400','n400','baseline_n400']: 
+				keep_channels = utils.n400_channel_set()
+			else: keep_channels = False
+			self.data,self.ch,self.rm_ch= utils.raw2np(self.raw,keep_channels= keep_channels)
+		self.extracted_words,self.extracted_eeg, self.word_indices = [], [], []
+		self.epoch_type = epoch_type
+		for i,w in enumerate(self.words):
+			if not w.usable: continue 
+			if content_word and not (hasattr(w,'pos') and w.pos.content_word): continue
+			wd = utils.extract_word_eeg_data(self.data,w, epoch_type = epoch_type)
+			if type(wd) == np.ndarray:
+				self.extracted_words.append(w)
+				self.extracted_eeg.append(wd)
+				self.word_indices.append(i)
+
+	def average_words(self, epoch_type = 'epoch'):
+		if not hasattr(self,'extracted_eeg') or self.epoch_type != epoch_type: 
+			self.extract_words(epoch_type=epoch_type)
+		self.avg_word_eeg = np.zeros(self.extracted_eeg[0].shape)
+		for eeg in self.extracted_eeg:
+			self.avg_word_eeg += eeg
+		self.avg_word_eeg = self.avg_word_eeg / len(self.extracted_eeg)
+
 
 
 	def load_orts(self):
@@ -315,17 +327,17 @@ class block:
 					# add extra speaker for ifadv and check for overlap between speakers
 					self.orts[-1].add_speaker(self.sids[1])
 					self.orts[-1].check_overlap()
+			# set sample offset (when did the recording start playing 
+			# in sample time, if wav consist of multiple wav add offset
+			# k (news) also had an pause between files of .9 seconds
+			if self.exp_type == 'k' and i > 0:
+				total_fids_offset += last_fid_duration + k_wav_offset_sample
+			elif self.exp_type == 'o' and i > 0:
+				total_fids_offset += last_fid_duration 
+			else:
+				total_fids_offset = 0
+			# set samplenumber for each word
 			for w in self.orts[-1].words:
-				# set sample offset (when did the recording start playing 
-				# in sample time, if wav consist of multiple wav add offset
-				# k (news) also had an pause between files of .9 seconds
-				if self.exp_type == 'k' and i > 0:
-					total_fids_offset += last_fid_duration + k_wav_offset_sample
-				elif self.exp_type == 'o' and i > 0:
-					total_fids_offset += last_fid_duration 
-				else:
-					total_fids_offset = 0
-				# set samplenumber for each word
 				if not self.block_missing:
 					w.set_times_as_samples(offset=total_fids_offset + self.st_sample)
 			if self.exp_type in ['o','k']:
