@@ -166,12 +166,8 @@ class Participant:
 
 		
 	
+			
 
 		
 
-'''
-		nrecord = self.sessions[-1].vmrk.n_eeg_recordings
-		setattr(self,'nrecordings_'+exp_type,nrecord)
-		setattr(self,'nblock_'+exp_type, self.session[-1].nblock)
-'''
 
