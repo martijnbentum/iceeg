@@ -12,6 +12,15 @@ def get_lattice_filenames(lattice_dir = None):
 	fn = [f for f in fn if 'xxx' not in f]
 	return fn 
 
+def exclude_done(lattice_filenames,output_dir):
+	output = []
+	ofn = [f.split('/')[-1].split('.')[0] for f in glob.glob(output_dir+'*.nbest')]
+	total_lattice = len(lattice_filenames)
+	for f in lattice_filenames:
+		if f.split('.')[1] not in ofn: output.append(f)
+	undone_lattice = len(output)
+	print('to do:',undone_lattice,'lattices','total:',total_lattice, 'done:',total_lattice-undone_lattice)
+	return output
 
 
 def make_bashscript(f,output_dir = None,nbest = 1000):
@@ -36,7 +45,16 @@ def make_nbest(f,output_dir = None, nbest = 1000, overwrite = False):
 		os.system('sh targz2nbest')
 
 def make_all_nbest(lattice_dir = None,output_dir = None, nbest = 1000, overwrite=False):
+	'''create nbest list for all files in the lattice dir
+
+	lattice_dir 	source dir with lattice files (kaldi output)
+	output_dir 		goal dir, to save nbest lists
+	nbest 			length of nbest list
+	ovewrite 		whether to overwrite previous files (if you want other length nbest list)
+	'''
+	if output_dir == None: output_dir = '/vol/tensusers/mbentum/PMN_AUDIO/NBEST/'
 	fn = get_lattice_filenames(lattice_dir)
+	fn = exclude_done(fn, output_dir)
 	bar = pb.ProgressBar()
 	bar(range(len(fn)))
 	for i,f in enumerate(fn):
