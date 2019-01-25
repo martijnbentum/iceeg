@@ -1,5 +1,7 @@
 import experiment as e
+import glob
 import numpy as np
+import os
 import path
 
 '''general functions, not specific to an object
@@ -154,14 +156,14 @@ def get_path_blockwavname(register, blockwav_name ):
 	'''
 	print(register,blockwav_name)
 	if register == 'spontaneous_dialogue':
-		path = '/Users/Administrator/storage/EEG_study_ifadv_cgn/IFADV/'
+		p = path.data +'EEG_study_ifadv_cgn/IFADV/'
 	elif register== 'read_aloud_stories':
-		path = '/Users/Administrator/storage/EEG_study_ifadv_cgn/comp-o/'
+		p = path.data + 'EEG_study_ifadv_cgn/comp-o/'
 	elif register == 'news_broadcast':
-		path = '/Users/Administrator/storage/EEG_study_ifadv_cgn/comp-k/'
+		p = path.data + 'EEG_study_ifadv_cgn/comp-k/'
 	else: raise Exception('Unknown register:',register)
 
-	blockwav_path = path + blockwav_name
+	blockwav_path = p + blockwav_name
 	return blockwav_path
 
 
@@ -228,7 +230,7 @@ def extract_audio(b, item, filename = 'default_audio_chunk'):
 	nchannels = audio.getnchannels()
 	sampwidth = audio.getsampwidth()
 
-	audio.setpos(start * framerate)
+	audio.setpos(int(start * framerate))
 	chunk = audio.readframes(int((end-start) * framerate))
 
 	chunk_audio = wave.open(filename,'wb')
@@ -240,11 +242,173 @@ def extract_audio(b, item, filename = 'default_audio_chunk'):
 	print('Extracted from:',wavname,'start/end:',start,end,'written to:',filename)
 	del wave
 
+def n400_channel_set():
+	return 'C3,C4,Cz,CP5,CP1,CP2,CP6,P7,P3,Pz,P4,P8,O1,O2'.split(',')
+
+def remove_channels(data,remove_ch= [], keep_channels = False):
+	ch_names = load_ch_names()
+	print(remove_ch,keep_channels)
+	if keep_channels: remove_ch = [n  for n in ch_names if n not in keep_channels]
+	print(remove_ch,keep_channels)
+	ch_mask = [n not in remove_ch for n in ch_names]
+	ch_names= [n for n in ch_names if not n in remove_ch]
+	print('channels:',' '.join(ch_names))
+	print('removed channels:', ' '.join(remove_ch))
+	return data[ch_mask,:], ch_names, remove_ch
+
+def raw2np(raw,remove_ch= [],keep_channels = False,rm_default_ch= True, remove_bads = True):
+	rdc = rm_default_ch
+	if rdc: remove_ch.extend(['VEOG','HEOG','TP10_RM','STI 014','LM'])
+	if remove_bads: remove_ch.extend(raw.info['bads'])
+	d = raw[:][0] * 10 **6
+	d, ch, rm_ch = remove_channels(d,remove_ch,keep_channels)
+	return d, ch, rm_ch
+
+def channels2indices(channels, channels_set = []):
+	if channels_set == []: ch_names = load_ch_names()
+	indices = []
+	for i,ch in enumerate(ch_names):
+		if ch in channels: indices.append(i)
+	return indices
+
+def extract_section_eeg_data(data,start,end):
+	return data[:,start:end]
+
+def extract_word_eeg_data(data,word, epoch_type = 'epoch', threshold = 75):
+	if epoch_type in ['epoch','epochn400']:
+		st = word.st_epoch - word.sample_offset 
+		et = word.et_epoch - word.sample_offset 
+	elif epoch_type == 'word':
+		st = word.st_sample - word.sample_offset 
+		et = word.et_sample - word.sample_offset 
+	elif epoch_type in ['baseline','baseline_n400']:
+		st = word.st_sample - 150 - word.sample_offset 
+		et = word.st_sample - word.sample_offset 
+	elif epoch_type == 'n400':
+		st = word.st_sample + 300 - word.sample_offset 
+		et = word.st_sample + 500 - word.sample_offset 
+	else: 
+		print('unknown epoch type, select from following options: epoch word baseline n400')
+		return False
+	if st < 0 or et > data.shape[1]: 
+		print('word is outside eeg data:\n',word.__repr__(),'\n')
+		return False
+	d = extract_section_eeg_data(data, st, et)
+	if np.max(d) > 75 or np.min(d) < -75:
+		print('eeg exceeds threshold',threshold)
+		return False
+	return d
+
+def make_n400_name(b,word_index):
+	return b.name + '_' + '-'.join(b.sids) + '_wi-'+ str(word_index)
+
+def save_n400_words(b, force_save = False):
+	if not hasattr(b,'extracted_eeg'): b.extract_words(epoch_type = 'epochn400')
+	for i,eeg in enumerate(b.extracted_eeg):
+		directory = path.n400_words + 'PP' + str(b.pp_id) + '/'
+		if not os.path.isdir(directory): os.mkdir(directory)
+		name = directory + make_n400_name(b, b.word_indices[i])
+		if os.path.isfile(name) and not force_save: continue
+		np.save(name,eeg)
+
+def make_n400_word2surprisal(overwrite= True,filename = ''):
+	if filename == '': filename = path.data + 'n400word2surprisal'
+	if overwrite: open(filename,'w')
+	p = e.Participant(1)
+	fo = p.fid2ort
+	for i in range(1,49):
+		p = e.Participant(i,fo)
+		p.add_all_sessions()
+		for s in p.sessions:
+			for b in s.blocks:
+				for i,w in enumerate(b.words):
+					line = make_n400_name(b, i) 
+					if not hasattr(w,'ppl'): line += '\t'+'NA' + '\n'
+					else: line += '\t'+str(w.ppl.logprob) +'\n'
+					with open(filename,'a') as fout:
+						fout.write(line)
+
+def n400_word2surprisal_dict(filename = ''):
+	if filename == '': filename = path.data + 'n400word2surprisal'
+	return dict([line.split('\t') for line in open(filename).read().split('\n') if line])
+
+def surprisal_distribution_per_register(p):
+	sk,so,sifadv = [], [], []
+	skc, soc, sifadvc = [], [], []
+	alls, allsc = [], []
+	ninf = 0
+	for s in p.sessions:
+		for b in s.blocks:
+			for w in b.words:
+				if not hasattr(w,'ppl'): continue
+				if '-inf' in w.ppl.word_line: 
+					lp = -10
+					ninf += 1
+				else: lp = float(w.ppl.logprob)
+				if 'exp-k' in b.name:
+					sk.append(lp)
+					if w.pos.content_word: skc.append(lp)
+				if 'exp-o' in b.name:
+					so.append(lp)
+					if w.pos.content_word: soc.append(lp)
+				if 'exp-ifadv' in b.name:
+					sifadv.append(lp)
+					if w.pos.content_word: sifadvc.append(lp)
+				alls.append(lp)
+				if w.pos.content_word: allsc.append(lp)
+	return sk, so, sifadv, skc, soc, sifadvc, alls, allsc, ninf
+
+def make_averages(fn = [], sd = {}, pp_split = False):
+	if fn == []: fn = get_n400fn()
+	if sd == {}: sd = n400_word2surprisal_dict()
+	avg = dict()
+	counter = dict()
+	not_found = []
+	for i,f in enumerate(fn):
+		if i % 100 == 0: print(i,len(fn))
+		eeg = np.load(f)
+		name = f.split('/')[-1].split('.')[0]
+		if name not in sd.keys():
+			not_found.append(name)
+			continue
+		lp = float(sd[name])
+		avg_type = ''
+		if lp < -3.5: avg_type += 'high'
+		elif lp > -2: avg_type += 'low'
+		else:  avg_type += 'middle'
+		if 'exp-k' in f: avg_type += '-k'
+		elif 'exp-o' in f: avg_type += '-o'
+		else: avg_type += '-ifadv'
+		if pp_split: avg_type += '-'+name.split('_')[0]
+		if avg_type not in avg.keys(): 
+			avg[avg_type] = eeg
+			counter[avg_type] = 1
+		else: 
+			avg[avg_type] += eeg 
+			counter[avg_type] += 1
+		alls = avg_type.split('-')[0] + '-alls'
+		if pp_split: alls += '-'+name.split('_')[0]
+		if alls not in avg.keys():
+			avg[alls] = eeg
+			counter[alls] = 1
+		else:
+			avg[alls] += eeg 
+			counter[alls] += 1
+	return avg, counter, not_found
+			
+
+	
+def get_n400fn():
+	fn = []
+	for i in range(1,49):
+		directory = path.n400_words + 'PP' + str(i) + '/'
+		if not os.path.isdir(directory): 
+			print(directory,'not found')
+		else: fn.extend(glob.glob(directory + 'pp*.npy'))
+	return fn
+
+def load_dict_wordtype2freq():
+	return dict([line.split('\t') for line in open(path.data + 'word_types_all.ft','r').read().split('\n')])
 
 
 
-
-
-
-
-		
