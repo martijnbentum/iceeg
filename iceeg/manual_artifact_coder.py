@@ -16,7 +16,7 @@ import windower
 import xml_handler
 
 class ac:
-	def __init__(self,b,length = 10,overlap = False,coder = 'martijn',filename = '',load_xml = True,sf = 100, remove_ch= None, show_cnn_pred = False, offset_value = 40, view_mode = 'all',filename_channels = '',default_annotation = 'garbage',default_annotation_channel = 'garbage', annotation_type = 'artifact',save_dir_artifact= '', save_dir_ch = '', add_channel_to_remove = '',enforce_coder = True):
+	def __init__(self,b,length = 10,overlap = False,coder = 'martijn',filename = '',load_xml = True,sf = 100, remove_ch= None, show_cnn_pred = False, offset_value = 40, view_mode = 'all',filename_channels = '',default_annotation = 'garbage',default_annotation_channel = 'garbage', annotation_type = 'artifact',save_dir_artifact= '', save_dir_ch = '', add_channel_to_remove = '',enforce_coder = True, skip_empty = True):
 		'''Interface to easily annotate eeg signal
 		b 			block object
 		length 		duration in seconds of an epoch in the interface
@@ -27,6 +27,7 @@ class ac:
 		load_data 	surpress previously generated bad_epochs (create new annotation), old versions are moved to OLD 
 					directory in artifacts folder.
 		'''
+		self.skip_empty = skip_empty
 		self.enforce_coder = enforce_coder
 		self.show_complete_bad = True
 		self.show_bad_channels = True
@@ -71,6 +72,7 @@ class ac:
 		self.complete_bad_channel = []
 		self.last_bad_epoch_id = int(open(path.artifacts +'last_bad_epoch_id').read())
 		self.load_from_xml(filename)
+		self.channel_artifact_selected = None
 
 		self.last_save = time.time()
 		self.make_epoch()
@@ -82,7 +84,7 @@ class ac:
 			index = self.bigger_bc.index(self.channel_artifact_selected)
 			self.smaller_bc = [self.bigger_bc.pop(index)]
 		else:
-			if self.annotation_type == 'channel_corrector' and len(self.bad_channels) == 0:
+			if self.annotation_type == 'channel_corrector' and len(self.bad_channels) == 0 and not self.skip_empty:
 				print('\n\n\nNo bad_channels nothing to be done, copying file to corrected folder')
 				c = 'cp '+self.filename_channels+' '+path.corrected_ch_cnn_xml+self.filename.split('/')[-1] 
 				print('copying: ', self.filename.split('/')[-1], 'to: ', path.corrected_ch_cnn_xml) 
@@ -90,7 +92,8 @@ class ac:
 				return None
 
 		self.plot_epoch('all',offset_value = self.offset_value)
-		self.channel_mode_index = self.channels.index(self.channel_artifact_selected.channel)
+		if self.channel_artifact_selected:
+			self.channel_mode_index = self.channels.index(self.channel_artifact_selected.channel)
 		self.reset_visible()
 		self.handle_plot(True)
 		self.redraw = False
@@ -1030,14 +1033,15 @@ class ac:
 				i = self.ch_names.index(bc.channel)
 				if bc.annotation != 'all': 
 					bc.plot(channel_data = self.data[i],offset = i*offset_value)
-			if self.channel_artifact_selected.correct == 'correct':
+			if self.channel_artifact_selected and self.channel_artifact_selected.correct == 'correct':
 				color = 'green'
 			else: color = 'red'
 		plt.grid(alpha=0.2,color='tan',lw=2)
 
 		if self.annotation_type == 'channel_corrector':
 			bc =self.channel_artifact_selected
-			bc.plot(channel_data = self.data[self.channel_mode_index],offset = self.channel_mode_index*offset_value,color =color) 
+			if bc:
+				bc.plot(channel_data = self.data[self.channel_mode_index],offset = self.channel_mode_index*offset_value,color =color) 
 			plt.plot(yx,focus_channel,linewidth = 0.9,color=clist[focus_ci],alpha=0.5)
 			# plt.plot(yx,y[self.channel_mode_index,:]+focus_offset,linewidth = 0.9,color='blue')
 			plt.axhline(y=self.channel_mode_index * offset_value,color = 'black',alpha = .9,linewidth = 1)
