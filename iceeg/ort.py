@@ -23,12 +23,14 @@ class Ort:
 		'''Load information about words in the audio
 
 		Keywords:
-		fid = file id of audio / transcription file in the corpus
-		sid_name = speaker id in the corpus
-		path/awd_path/pos_poth = location of ort (ortographic) awd (forced aligned) and pos transcription
-		corpus = corpus of file (IFADV/CGN) default = IFADV
-		register = type of speech (spontaneous_dialogue/news_broadcast/read_aloud_stories)
-		auto_set_paths = set paths based on register and corpus
+		fid 			file id of audio / transcription file in the corpus
+		sid_name 		speaker id in the corpus
+		path 			directory of ortographic annotations (migrate to path module?)
+		awd_... 		directory of forced aligned annotations
+		corpus 			corpus that is the source of the materials
+		pos_... 		directory of the part speech tag annotations
+		register 		type of speech (spontaneous_dialogue/news_broadcast/read_aloud_stories)
+		auto_set_paths  set paths based on register and corpus
 		'''
 		global verbose
 		verbose = set_verbose
