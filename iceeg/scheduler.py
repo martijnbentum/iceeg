@@ -1,3 +1,4 @@
+import astral
 import time
 import threading
 
@@ -6,9 +7,12 @@ class scheduler:
 	The tasks are performed in a seperate thread.
 	Multiple tasks can be added to the scheduler
 	'''
-	def init(self,name = 'default'):
+	def init(self,name = 'default',location = 'amsterdam'):
 		self.name = name
+		self.location = location
 		self.everies= []
+		self.a = astral.Astral()
+		self.location = self.a[location]
 
 	def add_every(self,interval = 1, unit = 'second',conditions = [],function = None, name = 'default'):
 		'''Add a task to the scheduler.'''
@@ -159,6 +163,21 @@ def is_deepnight(t = None):
 	h = int(time.strftime('%H%M', time.localtime(t)))
 	if h < 600: return True
 	else: return False
+
+def is_daylight(t = None, location = 'amsterdam'):
+	if t == None: t = time.time()
+	a = astral.Astral()
+	l = a[location]
+	start, end = l.daylight()[0].timestamp(), l.daylight()[1].timestamp()
+	return is_between(start,end,t)
+
+def is_sundown(t = None, location = 'amsterdam'):
+	if t == None: t = time.time()
+	a = astral.Astral()
+	l = a[location]
+	start, end = l.night()[0].timestamp(), l.daylight()[1].timestamp()
+	return is_between(start,end,t)
+	
 
 def is_between(start,end, t = None):
 	if t == None: t = time.time()
