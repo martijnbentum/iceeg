@@ -13,9 +13,16 @@ class Chunk:
 	'''
 	
 	def __init__(self,line,chunk_number,filename = None, fid = None,sid = None,cid = None,corpus = None,register =None):
-		'''Basic unit of orthographic transcription.'''
+		'''Basic unit of orthographic transcription.
+		line 			a line in table output of textgrid of 1 chunk: 1 orthographic annotation label
+		chunk_num... 	the number of chunk (starting at 1)
+		filename 		the name of the orthograpic annotation file
+		fid 
+
+		'''
 		self.line = line
-		self.chunk_number = chunk_number
+		self.chunk_number = chunk_number + 1
+		if cid == None: cid = chunk_number 
 		self.add_info(filename,fid,sid,cid,corpus,register)
 		self.check_line()
 		self.st, self.tier, self.label, self.et = self.line
@@ -28,6 +35,8 @@ class Chunk:
 		self.nwords = len(self.words)
 		utils.make_attributes_available(self,'w',self.words)
 
+	def __repr__(self):
+		return 'chunk\t' + self.label + '\tnumber: '+str(self.chunk_number)+'\tdur: '+str(self.duration)
 
 	def __str__(self):
 		a = ['chunk:\t\t'+self.label]
@@ -103,7 +112,7 @@ class Chunk:
 		self.words = []
 		for i,w in enumerate(words):
 			if w:
-				w = word.Word(w,i,self.chunk_number,self.st,self.et,self.filename,self.fid,self.sid,self.cid,corpus = self.corpus,register = self.register)
+				w = word.Word(w,i,self.chunk_number,self.st,self.et,self.filename,self.fid,self.sid,self.cid,corpus = self.corpus,register = self.register, chunk = self)
 				self.words.append(w)
 
 	def check_overlap(self):
