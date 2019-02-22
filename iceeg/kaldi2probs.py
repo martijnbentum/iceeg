@@ -10,11 +10,26 @@ import time
 import multiprocessing
 
 
+'''
+Create pronprob files for each word gate combination. Pronprob files describe the 
+probability distribution for phoneme string given a certain gate from word onset.
+The pronprob files are made with make_all_pronprobs()
+class gates was used to investigate the correct alpha factor (to create probabilities from kaldi output
+class kaldi is used to transform nbest into pronprob files for individual words
+'''
+
+
 def get_nbest_files(nbest_dir = None):
+	'''files are related to audio file for a block in the eeg-experiment. 
+	For each file multiple versions exist, one for each gate. 
+	nbest files contain phoneme probabilities for the top 500 phoneme strings 
+	for each word in the audio file.
+	'''
 	if nbest_dir == None: nbest_dir = get_nbest_dir()
 	return glob.glob(nbest_dir + '*')
 
 def wav2nbest_files(name, nbest_dir = None):
+	'''wav filename has a direct relation to the nbest filename: wavfn_gate_name.best'''
 	if nbest_dir == None: nbest_dir = get_nbest_dir()
 	fn = get_nbest_files(nbest_dir)
 	return [f for f in fn if name in f]
@@ -32,7 +47,9 @@ def get_nbest(t,chunk_name):
 	return [line for line in t if chunk_name in line[0]]
 
 class gates():
-	'''object to load all nbest list for each gate of the wav filename
+	'''
+	Used to test the best alpha factor to transform kaldi output in to probabilities.
+	object to load all nbest list for each gate of the wav filename
 	the gates are the number of miliseconds from word onset that is provided to kaldi
 	each gate is separately loaded in a kaldi object and consists of a number of chunks
 	chunks are the words in the wav file, gated to the n miliseconds of the gate
@@ -165,10 +182,12 @@ class gates():
 		print('plotted: ',lines,'excluded:',excluded,'because word is shorter than gate')
 
 
-def make_all_pronprobs(nprocess= 9):
-	'''Make individual files for each word / gate combination.
+def make_all_pronprobs(nprocess= 9,select_subset = ''):
 	'''
-	fn = glob.glob(path.nbest+'*.nbest')
+	Make individual files for each word / gate combination.
+	'''
+	fn = glob.glob(path.nbest+select_subset+'*.nbest')
+	print('processing:',fn,len(fn),'files')
 	p = multiprocessing.Pool(nprocess)
 	result = p.map(start_kaldi,fn)
 
