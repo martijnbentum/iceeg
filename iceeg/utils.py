@@ -245,23 +245,24 @@ def extract_audio(b, item, filename = 'default_audio_chunk'):
 def n400_channel_set():
 	return 'C3,C4,Cz,CP5,CP1,CP2,CP6,P7,P3,Pz,P4,P8,O1,O2'.split(',')
 
-def remove_channels(data,remove_ch= [], keep_channels = False):
+def pmn_channel_set():
+	return 'Fz,F3,F7,FC5,FC1,C3,T7,CP5,CP1,Pz,P3,P7,O1,O2,P4,P8,CP6,CP2,Cz,C4,T8,FC6,FC2,F4,F8'.split(',')
+
+def remove_channels(raw,keep_channels, remove_bads = True):
+	data = raw[:][0] * 10 **6
 	ch_names = load_ch_names()
-	print(remove_ch,keep_channels)
-	if keep_channels: remove_ch = [n  for n in ch_names if n not in keep_channels]
-	print(remove_ch,keep_channels)
+	print('all',ch_names,'\nkeep',keep_channels)
+	remove_ch = [n  for n in ch_names if n not in keep_channels]
+	if remove_bads: remove_ch.extend(raw.info['bads'])
+	print('remove',remove_ch,'\nkeep',keep_channels)
 	ch_mask = [n not in remove_ch for n in ch_names]
 	ch_names= [n for n in ch_names if not n in remove_ch]
 	print('channels:',' '.join(ch_names))
 	print('removed channels:', ' '.join(remove_ch))
 	return data[ch_mask,:], ch_names, remove_ch
 
-def raw2np(raw,remove_ch= [],keep_channels = False,rm_default_ch= True, remove_bads = True):
-	rdc = rm_default_ch
-	if rdc: remove_ch.extend(['VEOG','HEOG','TP10_RM','STI 014','LM'])
-	if remove_bads: remove_ch.extend(raw.info['bads'])
-	d = raw[:][0] * 10 **6
-	d, ch, rm_ch = remove_channels(d,remove_ch,keep_channels)
+def raw2np(raw,keep_channels, remove_bads = True):
+	d, ch, rm_ch = remove_channels(raw,keep_channels,remove_bads)
 	return d, ch, rm_ch
 
 def channels2indices(channels, channels_set = []):
@@ -275,25 +276,31 @@ def extract_section_eeg_data(data,start,end):
 	return data[:,start:end]
 
 def extract_word_eeg_data(data,word, epoch_type = 'epoch', threshold = 75):
-	if epoch_type in ['epoch','epochn400']:
+	if epoch_type in ['epoch','epochn400','epochpmn']:
 		st = word.st_epoch - word.sample_offset 
 		et = word.et_epoch - word.sample_offset 
 	elif epoch_type == 'word':
 		st = word.st_sample - word.sample_offset 
 		et = word.et_sample - word.sample_offset 
-	elif epoch_type in ['baseline','baseline_n400']:
+	elif epoch_type in ['baseline','baseline_n400','baseline_pmn']:
 		st = word.st_sample - 150 - word.sample_offset 
 		et = word.st_sample - word.sample_offset 
 	elif epoch_type == 'n400':
 		st = word.st_sample + 300 - word.sample_offset 
 		et = word.st_sample + 500 - word.sample_offset 
+	elif epoch_type == 'pmn':
+		st = word.st_sample + 250 - word.sample_offset 
+		et = word.st_sample + 350 - word.sample_offset 
 	else: 
-		print('unknown epoch type, select from following options: epoch word baseline n400')
+		print('unknown epoch type, select from following options: epoch word baseline n400',epoch_type)
 		return False
 	if st < 0 or et > data.shape[1]: 
 		print('word is outside eeg data:\n',word.__repr__(),'\n')
 		return False
 	d = extract_section_eeg_data(data, st, et)
+	if d.shape[0] == 0: 
+		print('eeg empty',d.shape)
+		return False
 	if np.max(d) > 75 or np.min(d) < -75:
 		print('eeg exceeds threshold',threshold)
 		return False
@@ -410,5 +417,49 @@ def get_n400fn():
 def load_dict_wordtype2freq():
 	return dict([line.split('\t') for line in open(path.data + 'word_types_all.ft','r').read().split('\n')])
 
+
+def make_word_code(word):
+	return word.fid + '_' + word.sid + '_' + str(word.chunk_number) + '_' + str(word.word_number) + '_' + str(word.pos.sentence_number) + '_' + word.pos.token_number +'_' + word.word_utf8_nocode_nodia()
+
+def load_dict_word_code2pmn_index():
+	return dict([line.split('\t') for line in open(path.data + 'word_code2pmn_wi_dict').read().split('\n')])
+
+def word2pmn_index(word):
+	d = load_dict_word_code2pmn_index()
+	word_code = make_word_code(word)
+	return d[word_code]
+
+def save_n400_words(b, force_save = False):
+	if not hasattr(b,'extracted_eeg'): b.extract_words(epoch_type = 'epochn400')
+	for i,eeg in enumerate(b.extracted_eeg):
+		directory = path.n400_words + 'PP' + str(b.pp_id) + '/'
+		if not os.path.isdir(directory): os.mkdir(directory)
+		name = directory + make_n400_name(b, b.word_indices[i])
+		if os.path.isfile(name) and not force_save: continue
+		np.save(name,eeg)
+
+def make_pmn_name(b,word_index):
+	return b.name + '_' + '-'.join(b.sids) + '_wi-'+ str(word_index)
+
+def save_pmn_words(b,content_word = False,force_save = False):
+	if not hasattr(b,'xml') or b.xml.usability not in ['great','ok','mediocre']:
+		with open(path.data + 'pmn_skipped_blocks','a') as fout:
+			fout.write(b.name +'\n')
+		return
+	pmn_index_dict = load_dict_word_code2pmn_index()
+	if not hasattr(b,'extracted_eeg'): b.extract_words(epoch_type = 'epochpmn',content_word = content_word)
+	for i,eeg in enumerate(b.extracted_eeg):
+		pmn_name = make_pmn_name(b,b.word_indices[i])
+		w = b.extracted_words[i]
+		word_code = make_word_code(w)
+		pmn_index = pmn_index_dict[word_code]
+		directory = path.pmn_words+ 'PP' + str(b.pp_id) + '/'
+		if not os.path.isdir(directory): os.mkdir(directory)
+		cw = 'cw' if w.pos.content_word else 'nw'
+		name = directory + pmn_index + '_' + word_code + '_' + b.exp_type + '_' + cw
+		if os.path.isfile(name) and not force_save: continue
+		np.save(name,eeg)
+		with open(name +'.ch','w') as fout:
+			fout.write('\n'.join(b.ch))
 
 
