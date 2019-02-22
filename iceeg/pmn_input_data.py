@@ -1,6 +1,8 @@
 import experiment
 import numpy as np
 
+'''create lists that describe the word onsets, gates and filenames for each word in the experiment'''
+
 class pmn_data():
 	'''Holds all words of all experiments with relevant information for PMN experiment.
 	'''
@@ -95,7 +97,7 @@ class pmn_word():
 		m = 'pre context:\t\t' + self.pc_string
 		m += 't zero:\t\t' + self.start_str
 		m += 'file id:\t\t' + self.fid
-		m += 'word:\t\t' + self.word
+		m += 'word:\t\t' + self.word_str
 		return m
 		
 	def format(self,index, offset = 0.5):
