@@ -1,6 +1,7 @@
 import glob
 import numpy as np
 import os
+import path
 import random
 import threading
 import time
@@ -73,7 +74,7 @@ def load_lexicon():
 	'''Load lexicon with all words with cumulative probability < .9 ~ 90k words.
 	if a different lexicon is used other directories need to be specified
 	'''
-	return open('lexicon_cow_clean10_s90',encoding = 'utf8').read().split('\n')
+	return open(path.data + 'lexicon_cow_clean10_s90',encoding = 'utf8').read().split('\n')
 
 
 	
@@ -214,14 +215,15 @@ def wait_until_ready(f):
 		
 		
 
-def make_pdf(f,pdf_name, lexicon):
+def make_pdf(f,pdf_name, lexicon, force_start = False):
 	'''Create an np array with word prob for each word in lexicon given specific precontext.
 	f 			filename of the ppl file
 	pdf_name 	filename of the word pdf numpy array
 	lexicon 	all words to generate word prob distribution for
 	'''
-	os.system('touch DONE_PDF/'+ filename2name(pdf_name))
-	print('starting at:',wait_until_ready(f),'creating pdf file with',f)
+	if not force_start:
+		os.system('touch DONE_PDF/'+ filename2name(pdf_name))
+		print('starting at:',wait_until_ready(f),'creating pdf file with',f)
 	ppl = open(f,encoding = 'utf8').read().split('\n\n')
 	output = []
 	for i, l in enumerate(ppl[:-1]):
