@@ -9,7 +9,7 @@ if os.path.isdir('/Volumes/Bigstorage/BAK/'): bak = '/Volumes/Bigstorage/BAK/'
 if os.path.isdir('/Volumes/BAK1TB/'): bak = '/Volumes/BAK1TB/'
 if os.path.isdir('/Volumes/storage/bak/'): bak = '/Volumes/storage/bak/'
 
-if os.path.isdir('/Volumes/WINDOW/EEG/'): volume = '/Volumes/WINDOW/'
+if os.path.isdir('/Volumes/WINDOW/'): volume = '/Volumes/WINDOW/'
 elif os.path.isdir('/Volumes/storage/'): volume = '/Volumes/storage/'
 elif os.path.isdir('/Users/u050158/storage/'): volume = '/Users/u050158/storage/'
 elif os.path.isdir('/Volumes/Fenna/Documents/'): volume = '/Volumes/Fenna/Documents/'
@@ -20,6 +20,7 @@ else: print('please add path to secondary data folder to the path.py file in the
 
 data= volume + 'EEG_DATA_ifadv_cgn/'
 if os.path.isdir(volume +'EEG'):eeg= volume + 'EEG/'
+if os.path.isdir('/Volumes/Bigstorage/EEG/'): eeg= '/Volumes/Bigstorage/EEG/'
 if os.path.isdir('/Users/u050158/storage/'): eeg= data + 'EEG_INFO/'
 if os.path.isdir('/Volumes/BAK4TB/EEG/'):eeg = '/Volumes/BAK4TB/EEG/'
 elif os.path.isdir('/Volumes/BAK1TB/EEG/'): eeg = '/Volumes/BAK1TB/EEG/'
@@ -81,3 +82,6 @@ pronprob = bak + 'PRONPROB/'
 
 n400_words = bak + 'N400/'
 datasets = data + 'DATASETS/'
+pmn_datasets = data + 'PMN_DATASETS/'
+pmn_words = bak + 'PMN/'
+plot_dicts = pmn_datasets + 'PLOT_DICTS/'
