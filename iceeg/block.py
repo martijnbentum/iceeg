@@ -273,13 +273,15 @@ class block:
 		if not hasattr(self,'data'): 
 			if epoch_type in ['epochn400','n400','baseline_n400']: 
 				keep_channels = utils.n400_channel_set()
-			else: keep_channels = False
+			if epoch_type in ['epochpmn','pmn']:
+				keep_channels = utils.pmn_channel_set()
+			else: raise ValueError('unk epoch type:',epoch_type)
 			self.data,self.ch,self.rm_ch= utils.raw2np(self.raw,keep_channels= keep_channels)
 		self.extracted_words,self.extracted_eeg, self.word_indices = [], [], []
 		self.epoch_type = epoch_type
 		for i,w in enumerate(self.words):
-			if not w.usable: continue 
-			if content_word and not (hasattr(w,'pos') and w.pos.content_word): continue
+			if not w.usable or not hasattr(w,'pos') or not hasattr(w,'ppl'): continue
+			if content_word and not w.pos.content_word: continue
 			wd = utils.extract_word_eeg_data(self.data,w, epoch_type = epoch_type)
 			if type(wd) == np.ndarray:
 				self.extracted_words.append(w)
@@ -293,7 +295,6 @@ class block:
 		for eeg in self.extracted_eeg:
 			self.avg_word_eeg += eeg
 		self.avg_word_eeg = self.avg_word_eeg / len(self.extracted_eeg)
-
 
 
 	def load_orts(self):
