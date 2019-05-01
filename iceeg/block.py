@@ -23,7 +23,7 @@ import xml_cnn
 class block:
 	'''The block class aggregates timing information for one audio file in the experiment.'''
 
-	def __init__(self,pp_id,exp_type,vmrk,log,bid, fid2ort = None):
+	def __init__(self,pp_id,exp_type,vmrk,log,bid, fid2ort = None,corrected_artifacts = True):
 		'''Load general info about start and end time block matches all words 
 		to sample numbers in the vmrk marker file.
 
@@ -34,6 +34,7 @@ class block:
 		log = log object, contains start/end times; name audio file
 		bid = block id, int
 		fid2ort = dict that maps file id to ort object default = None, if none ort is created
+		corrected_artifacts = for testing purposes, keep True
 		'''
 		self.pp_id = pp_id
 		self.exp_type = exp_type
@@ -42,6 +43,7 @@ class block:
 		self.log = log
 		self.bid = bid
 		self.fid2ort = fid2ort
+		self.corrected_artifacts = corrected_artifacts
 		self.set_info()
 		self.load_orts()
 		utils.make_attributes_available(self,'ort',self.orts)
@@ -213,8 +215,8 @@ class block:
 		'''Loads automatically generated artifact annotations.
 		WIP: extend to be able to specify which annotation type to load (manual / automatic)
 		'''
-		if os.path.isfile(combine_artifacts.make_xml_name(self.name)):
-			self.xml = combine_artifacts.bads(self.name)
+		if os.path.isfile(combine_artifacts.make_xml_name(self.name, corrected = self.corrected_artifacts)):
+			self.xml = combine_artifacts.bads(self.name, corrected = self.corrected_artifacts)
 			self.artifacts = [a for a in self.xml.bads if a.annotation == 'artifact'] 
 			self.nartifacts = len(self.artifacts)
 			self.start_artifacts = [a.st_sample/1000 for a in self.artifacts]
@@ -268,20 +270,26 @@ class block:
 		self.nexcluded = self.nallwords - self.nwords
 
 
-	def extract_words(self, content_word = True, epoch_type = 'epoch'):
-		if not hasattr(self,'raw'): self.load_eeg_data()
+	def extract_words(self, content_word = True, epoch_type = 'epoch', dirty = False):
+		if not hasattr(self,'raw'): 
+			if dirty: self.load_eeg_data(apply_ica = False)
+			else: self.load_eeg_data()
+		if not hasattr(self,'raw') or self.raw == 0: 
+			print('could not load raw, doing nothing')
+			return
 		if not hasattr(self,'data'): 
 			if epoch_type in ['epochn400','n400','baseline_n400']: 
 				keep_channels = utils.n400_channel_set()
-			if epoch_type in ['epochpmn','pmn']:
+			if epoch_type in ['epochpmn','pmn','epoch']:
 				keep_channels = utils.pmn_channel_set()
 			else: raise ValueError('unk epoch type:',epoch_type)
 			self.data,self.ch,self.rm_ch= utils.raw2np(self.raw,keep_channels= keep_channels)
 		self.extracted_words,self.extracted_eeg, self.word_indices = [], [], []
 		self.epoch_type = epoch_type
 		for i,w in enumerate(self.words):
-			if not w.usable or not hasattr(w,'pos') or not hasattr(w,'ppl'): continue
-			if content_word and not w.pos.content_word: continue
+			if not dirty:
+				if not w.usable or not hasattr(w,'pos') or not hasattr(w,'ppl'): continue
+				if content_word and not w.pos.content_word: continue
 			wd = utils.extract_word_eeg_data(self.data,w, epoch_type = epoch_type)
 			if type(wd) == np.ndarray:
 				self.extracted_words.append(w)
