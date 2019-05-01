@@ -33,16 +33,30 @@ class word2ppl:
 		self.infos, holds sentence info, sentence_info file made with p.print_session (part of participant in experiment.py)
 		self.strings, holds the string representation of each sentence
 		self.ppls, holds the output of the SRILM ngram call
+		self.ppls_register, contains the lm with cow interpolated with correct register lm
+		self.ppls_other1/2, contains the lm with cow interpolated with wrong register
+			the self.lm_other1/2 first part is the register lm used, other is the text used (corresponding to exp)
 		'''
 		exp = self.exp
-		if exp == 'o': self.lm = 'books_30'
-		if exp == 'k': self.lm = 'autocues_30'
-		if exp == 'ifadv': self.lm = 'compa_20'
+		if exp == 'o': 
+			self.lm = 'books_30'
+			self.lm_other1 = 'autocues_30_other-o'
+			self.lm_other2 = 'compa_20_other-o'
+		if exp == 'k': 
+			self.lm = 'autocues_30'
+			self.lm_other1 = 'books_30_other-k'
+			self.lm_other2 = 'compa_20_other-k'
+		if exp == 'ifadv': 
+			self.lm = 'compa_20'
+			self.lm_other1 = 'autocues_30_other-ifadv'
+			self.lm_other2 = 'books_30_other-ifadv'
 		self.infos = [line.split('\t') for line in open(path.data +'sentence_info_' + exp,encoding = 'utf-8').read().split('\n')]
 		self.strings = open(path.data+'sentence_strings_' + exp,encoding = 'utf8').read().split('\n')
 		# should make ppl filename more genral
 		self.ppls = open(path.data+'out_' + exp + '_10.ppl',encoding = 'utf-8').read().split('\n\n')
-		self.ppls_register = open(path.data + 'cow_' + self.lm + '.out',encoding = 'utf-8').read().split('\n\n')
+		self.ppls_register = open(path.data + 'cow_'+self.lm + '.out', encoding = 'utf-8').read().split('\n\n')
+		self.ppls_other1= open(path.data + self.lm_other1, encoding = 'utf-8').read().split('\n\n')
+		self.ppls_other2= open(path.data + self.lm_other2, encoding = 'utf-8').read().split('\n\n')
 
 	def set_ppl_sentences(self):
 		'''Create ppl_sentence objects.'''
@@ -53,8 +67,10 @@ class word2ppl:
 				break
 			info_line = self.infos[i]
 			info_line_register = self.ppls_register[i]
+			info_line_other1= self.ppls_other1[i]
+			info_line_other2= self.ppls_other2[i]
 			s = self.strings[i]
-			self.sentences.append(ppl_sentence(ppl_line,info_line,s,self.exp,info_line_register))
+			self.sentences.append(ppl_sentence(ppl_line,info_line,s,self.exp,info_line_register,info_line_other1,info_line_other2))
 			self.words.extend(self.sentences[-1].words)
 
 	def _extract_info(self):
@@ -157,7 +173,7 @@ class word2ppl:
 
 class ppl_sentence:
 	'''Holds information about each sentence, based on the SRILM ngram call output.'''
-	def __init__(self,ppl_line,info_line,s,exp,info_line_register = ''):
+	def __init__(self,ppl_line,info_line,s,exp,info_line_register = '',info_line_other1 = '',info_line_other2 = ''):
 		'''PPL information for each sentence, hold ppl_word objects.
 		ppl_line 	a string with all info related to 1 sentence (SRILM ngram output)
 		info_line 	list with sentence info (checks ppl info)
@@ -172,6 +188,10 @@ class ppl_sentence:
 		self.exp = exp
 		self.info_line_register = info_line_register
 		self.ppl_register_list = info_line_register.split('\n')
+		self.info_line_other1= info_line_other1
+		self.ppl_other1_list = info_line_other1.split('\n')
+		self.info_line_other2= info_line_other2
+		self.ppl_other2_list = info_line_other2.split('\n')
 		self.sentence_number = self.info[1]
 		self.sid = self.info[2]
 		self.bid = self.info[3]
@@ -199,12 +219,16 @@ class ppl_sentence:
 		'''Create ppl_word object for each word in the sentence.'''
 		self.words = []
 		ppl_register_list = self.ppl_register_list[1:-2]
+		ppl_other1_list = self.ppl_other1_list[1:-2]
+		ppl_other2_list = self.ppl_other2_list[1:-2]
 		for i,word_line in enumerate(self.ppl_list[1:-2]):
 			# print(word_line)
 			word = word_line.split('( ')[-1].split(' | ')[0]
 			word_line_register = ppl_register_list[i]
+			word_line_other1= ppl_other1_list[i]
+			word_line_other2= ppl_other2_list[i]
 			if word == '</s>': continue
-			self.words.append(ppl_word(i,word_line,self,word_line_register))
+			self.words.append(ppl_word(i,word_line,self,word_line_register,word_line_other1,word_line_other2))
 
 	def _extract_sentence_ppl(self):
 		'''Retreive some sentence ppl stats.'''
@@ -213,6 +237,12 @@ class ppl_sentence:
 
 		self.logprob_register = self.info_line_register.split(' logprob= ')[-1].split(' ')[0]
 		self.ppl_score_register, self.ppl1_score_register = self.info_line_register.split('ppl= ')[-1].split(' ppl1= ')
+
+		self.logprob_other1= self.info_line_other1.split(' logprob= ')[-1].split(' ')[0]
+		self.ppl_score_other1, self.ppl1_score_other1= self.info_line_other1.split('ppl= ')[-1].split(' ppl1= ')
+
+		self.logprob_other2= self.info_line_other2.split(' logprob= ')[-1].split(' ')[0]
+		self.ppl_score_other2, self.ppl1_score_other2= self.info_line_other2.split('ppl= ')[-1].split(' ppl1= ')
 
 		try: self.ppl_score = float(self.ppl_score)
 		except: pass
@@ -228,6 +258,20 @@ class ppl_sentence:
 		try: self.logprob_register = float(self.logprob_register)
 		except: pass
 
+		try: self.ppl_score_other1= float(self.ppl_score_other1)
+		except: pass
+		try: self.ppl1_score_other1= float(self.ppl1_score_other1)
+		except: pass
+		try: self.logprob_other1 = float(self.logprob_other1)
+		except: pass
+
+		try: self.ppl_score_other2= float(self.ppl_score_other2)
+		except: pass
+		try: self.ppl1_score_other2= float(self.ppl1_score_other2)
+		except: pass
+		try: self.logprob_other2 = float(self.logprob_other2)
+		except: pass
+
 	def _extract_noovs(self):
 		'''Count out of vocabulary words.'''
 		self.oov = self.ppl_line.split(' words, ')[-1].split(' ')[0]
@@ -235,6 +279,12 @@ class ppl_sentence:
 
 		self.oov_register = self.info_line_register.split(' words, ')[-1].split(' ')[0]
 		self.nwords_register = self.info_line_register.split(' sentences, ')[-1].split(' ')[0]
+
+		self.oov_other1= self.info_line_other1.split(' words, ')[-1].split(' ')[0]
+		self.nwords_other1 = self.info_line_other1.split(' sentences, ')[-1].split(' ')[0]
+
+		self.oov_other2= self.info_line_other2.split(' words, ')[-1].split(' ')[0]
+		self.nwords_other2 = self.info_line_other2.split(' sentences, ')[-1].split(' ')[0]
 
 		try: self.oov = int(self.oov)
 		except: pass
@@ -246,10 +296,20 @@ class ppl_sentence:
 		try: self.nwords_register= int(self.nwords_register)
 		except: pass
 
+		try: self.oov_other1= int(self.oov_other1)
+		except: pass
+		try: self.nwords_other1= int(self.nwords_other1)
+		except: pass
+
+		try: self.oov_other1= int(self.oov_other2)
+		except: pass
+		try: self.nwords_other1= int(self.nwords_other2)
+		except: pass
+
 
 class ppl_word:
 	'''PPL info for a word based on SRILM ngram call output.'''
-	def __init__(self,i,word_line,sentence,word_line_register):
+	def __init__(self,i,word_line,sentence,word_line_register,word_line_other1,word_line_other2):
 		'''PPL info for a word based on SRILM ngram call output.
 		i 		index, word number in sentence
 		word... the line corresponding to the word in the SRILM output
@@ -262,6 +322,8 @@ class ppl_word:
 		self.index = i
 		self.word_line = word_line
 		self.word_line_register = word_line_register
+		self.word_line_other1= word_line_other1
+		self.word_line_other2= word_line_other2
 		self.ppl_sentence = sentence
 		self.sentence = self.ppl_sentence.sentence
 		self.word = self.sentence.split(' ')[i]
@@ -280,6 +342,9 @@ class ppl_word:
 		m = 'word:\t\t' + self.word + '\n'
 		m += 'id:\t\t' + self.word_id + '\n'
 		m += 'logprob:\t\t' + str(self.logprob)+ '\n'
+		m += 'logprob_register:\t\t' + str(self.logprob_register)+ '\n'
+		m += 'logprob_other1:\t\t' + str(self.logprob_other1)+ '\n'
+		m += 'logprob_other2:\t\t' + str(self.logprob_other2)+ '\n'
 		m += 'p:\t\t' + str(self.p)+ '\n'
 		m += 'ngram:\t\t' + str(self.ngram)+ '\n'
 		m += 'experiment:\t'+self.exp+ '\n'
@@ -302,8 +367,20 @@ class ppl_word:
 		self.p_register = self.word_line_register.split('] ')[-1].split(' ')[0]
 		self.logprob_register = self.word_line_register.split(' [ ')[-1].split(' ]')[0]
 
+		self.p_other1= self.word_line_other1.split('] ')[-1].split(' ')[0]
+		self.logprob_other1= self.word_line_other1.split(' [ ')[-1].split(' ]')[0]
+
+		self.p_other2= self.word_line_other2.split('] ')[-1].split(' ')[0]
+		self.logprob_other2= self.word_line_other2.split(' [ ')[-1].split(' ]')[0]
+
 		self.p= float(self.p)
 		self.logprob= float(self.logprob)
 		
 		self.p_register= float(self.p_register)
 		self.logprob_register= float(self.logprob_register)
+
+		self.p_other1= float(self.p_other1)
+		self.logprob_other1= float(self.logprob_other1)
+
+		self.p_other2= float(self.p_other2)
+		self.logprob_other2= float(self.logprob_other2)
