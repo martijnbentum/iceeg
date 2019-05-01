@@ -1,8 +1,11 @@
+import block
 import experiment as e
 import glob
 import numpy as np
 import os
 import path
+import pickle
+import session
 
 '''general functions, not specific to an object
 
@@ -24,6 +27,15 @@ def name2exp_type(name):
 def name2bid(name):
 	'''Extract block id from name (windower.make_name(b)).'''
 	return int(name.split('_')[2].strip('bid-'))
+
+def load_block_with_uncorrected_artifacts(name, fo = None):
+	pp_id = name2pp_id(name)
+	exp_type = name2exp_type(name)
+	bid = name2bid(name)
+	s = session.Session(pp_id,exp_type,fo)
+	vmrk = s.vmrk
+	log = s.log
+	return block.block(s.pp_id,s.exp_type,s.vmrk,s.log,bid,fo,corrected_artifacts = False)
 
 def name2block(name, fo = None):
 	'''Based on the name made by the windower object, create and return the block object.'''
@@ -331,7 +343,9 @@ def make_n400_word2surprisal(overwrite= True,filename = ''):
 				for i,w in enumerate(b.words):
 					line = make_n400_name(b, i) 
 					if not hasattr(w,'ppl'): line += '\t'+'NA' + '\n'
-					else: line += '\t'+str(w.ppl.logprob) +'\n'
+					else: 
+						line += '\t'+str(w.ppl.logprob) + ',' + str(w.ppl.logprob_register) 
+						line += ',' + str(w.ppl.logprob_other1) + ',' + str(w.ppl.logprob_other2) + '\n'
 					with open(filename,'a') as fout:
 						fout.write(line)
 
@@ -365,7 +379,7 @@ def surprisal_distribution_per_register(p):
 				if w.pos.content_word: allsc.append(lp)
 	return sk, so, sifadv, skc, soc, sifadvc, alls, allsc, ninf
 
-def make_averages(fn = [], sd = {}, pp_split = False):
+def make_averages(fn = [], sd = {}, pp_split = False,save = False):
 	if fn == []: fn = get_n400fn()
 	if sd == {}: sd = n400_word2surprisal_dict()
 	avg = dict()
@@ -378,31 +392,54 @@ def make_averages(fn = [], sd = {}, pp_split = False):
 		if name not in sd.keys():
 			not_found.append(name)
 			continue
-		lp = float(sd[name])
-		avg_type = ''
-		if lp < -3.5: avg_type += 'high'
-		elif lp > -2: avg_type += 'low'
-		else:  avg_type += 'middle'
-		if 'exp-k' in f: avg_type += '-k'
-		elif 'exp-o' in f: avg_type += '-o'
-		else: avg_type += '-ifadv'
-		if pp_split: avg_type += '-'+name.split('_')[0]
-		if avg_type not in avg.keys(): 
-			avg[avg_type] = eeg
-			counter[avg_type] = 1
-		else: 
-			avg[avg_type] += eeg 
-			counter[avg_type] += 1
-		alls = avg_type.split('-')[0] + '-alls'
-		if pp_split: alls += '-'+name.split('_')[0]
-		if alls not in avg.keys():
-			avg[alls] = eeg
-			counter[alls] = 1
-		else:
-			avg[alls] += eeg 
-			counter[alls] += 1
+		lp_names = 'lp,lp_register,lp_other1,lp_other1'.split(',') 
+		lp_values = map(float,sd[name].split(','))
+		for i,lp in enumerate(lp_values):
+			avg_type = lp_names[i] +'_'
+			if lp < -3.5: avg_type += 'high'
+			elif lp > -2: avg_type += 'low'
+			else:  avg_type += 'middle'
+			if 'exp-k' in f: avg_type += '-k'
+			elif 'exp-o' in f: avg_type += '-o'
+			else: avg_type += '-ifadv'
+			if pp_split: avg_type += '-'+name.split('_')[0]
+			if avg_type not in avg.keys(): 
+				avg[avg_type] = eeg
+				counter[avg_type] = 1
+			else: 
+				avg[avg_type] += eeg 
+				counter[avg_type] += 1
+			alls = avg_type.split('-')[0] + '-alls'
+			if pp_split: alls += '-'+name.split('_')[0]
+			if alls not in avg.keys():
+				avg[alls] = eeg
+				counter[alls] = 1
+			else:
+				avg[alls] += eeg 
+				counter[alls] += 1
+	if save: 
+		save_n400_dict(avg,counter)
 	return avg, counter, not_found
 			
+
+def save_n400_dict(avg,counter):
+	'''Save avgerage and counder in a pickle to the datasets directory.'''
+	fout = open(path.datasets + 'avg_n400.dict','wb')
+	pickle.dump(avg,fout,-1)
+	fout.close()
+	fout = open(path.datasets + 'counter_n400.dict','wb')
+	pickle.dump(counter,fout,-1)
+	fout.close()
+
+def load_n400_dict():
+	'''Load the average and counter dictionary.'''
+	fin = open(path.datasets + 'avg_n400.dict','rb')
+	avg = pickle.load(fin)
+	fin.close()
+	fin = open(path.datasets + 'counter_n400.dict','rb')
+	counter = pickle.load(fin)
+	fin.close()
+	return avg, counter
 
 	
 def get_n400fn():
@@ -418,7 +455,8 @@ def load_dict_wordtype2freq():
 	return dict([line.split('\t') for line in open(path.data + 'word_types_all.ft','r').read().split('\n')])
 
 
-def make_word_code(word):
+def make_word_code(word, dirty = False):
+	if dirty: return word.fid + '_' + word.sid + '_' + str(word.chunk_number) + '_' + str(word.word_number) + '_' + word.word_utf8_nocode_nodia()
 	return word.fid + '_' + word.sid + '_' + str(word.chunk_number) + '_' + str(word.word_number) + '_' + str(word.pos.sentence_number) + '_' + word.pos.token_number +'_' + word.word_utf8_nocode_nodia()
 
 def load_dict_word_code2pmn_index():
@@ -441,21 +479,30 @@ def save_n400_words(b, force_save = False):
 def make_pmn_name(b,word_index):
 	return b.name + '_' + '-'.join(b.sids) + '_wi-'+ str(word_index)
 
-def save_pmn_words(b,content_word = False,force_save = False):
-	if not hasattr(b,'xml') or b.xml.usability not in ['great','ok','mediocre']:
-		with open(path.data + 'pmn_skipped_blocks','a') as fout:
-			fout.write(b.name +'\n')
-		return
+def save_pmn_words(b,content_word = False,force_save = False, dirty = False):
+	if not dirty:
+		if not hasattr(b,'xml') or b.xml.usability not in ['great','ok','mediocre']:
+			with open(path.data + 'pmn_skipped_blocks','a') as fout:
+				fout.write(b.name +'\n')
+			return
+	if b.st_sample == None or b.et_sample == None: return
 	pmn_index_dict = load_dict_word_code2pmn_index()
-	if not hasattr(b,'extracted_eeg'): b.extract_words(epoch_type = 'epochpmn',content_word = content_word)
+	if not hasattr(b,'extracted_eeg'): b.extract_words(epoch_type = 'epochpmn',content_word = content_word, dirty = dirty)
+	if not hasattr(b,'extracted_eeg'): return
 	for i,eeg in enumerate(b.extracted_eeg):
 		pmn_name = make_pmn_name(b,b.word_indices[i])
 		w = b.extracted_words[i]
-		word_code = make_word_code(w)
-		pmn_index = pmn_index_dict[word_code]
-		directory = path.pmn_words+ 'PP' + str(b.pp_id) + '/'
+		word_code = make_word_code(w,dirty)
+		if dirty: pmn_index = 'unk_pmn_index'
+		else: pmn_index = pmn_index_dict[word_code]
+
+		if dirty: directory = path.pmn_words_dirty + 'PP' + str(b.pp_id) + '/'
+		else: directory = path.pmn_words+ 'PP' + str(b.pp_id) + '/'
+
 		if not os.path.isdir(directory): os.mkdir(directory)
-		cw = 'cw' if w.pos.content_word else 'nw'
+		if not dirty:
+			cw = 'cw' if w.pos.content_word else 'nw'
+		else: cw = 'unk'
 		name = directory + pmn_index + '_' + word_code + '_' + b.exp_type + '_' + cw
 		if os.path.isfile(name) and not force_save: continue
 		np.save(name,eeg)
