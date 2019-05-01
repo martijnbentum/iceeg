@@ -228,6 +228,7 @@ class Word:
 	
 	def set_artifact(self,artifact):
 		self.artifact_id = artifact.epoch_id
+		self.artifact_coder = artifact.coder.split('_')[0]
 		self.usable = False
 
 	def add_phoneme_word(self):
