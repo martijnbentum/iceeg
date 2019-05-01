@@ -147,7 +147,7 @@ class log:
 		print("Creating marker_wav dict:\t marker -> wav_name")
 		#log is pandaframe and the list of filenames is used to acces columns
 		#as matrix turns into dtype object (numpy?) and list into a list of list
-		self.marker2wav = dict(list(self.log[['marker','filename']].as_matrix()))
+		self.marker2wav = dict(list(self.log[['marker','filename']].values))
 
 	
 	def marker2fidlist_dict(self):
