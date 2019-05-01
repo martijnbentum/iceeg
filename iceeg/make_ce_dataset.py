@@ -13,7 +13,7 @@ def extract_columns(line,columns,header):
 
 def make_ds(columns = [],gates = []):
 	if gates == []:
-		gates = [str(g) for g in range(110,660,20) if len(glob.glob(path.pmn_datasets + str(g) +'/WORDS/*')) == 49019]
+		gates = [str(g) for g in range(110,660,20)] 
 	if columns == []:
 		columns = 'word,exp,duration,content_word,gate,ud_entropy,entropy'
 		columns += ',cross_entropy,freq_log,word_in_sentence,surprisal,ud_surprisal,word_block_index'
