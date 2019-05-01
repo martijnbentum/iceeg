@@ -75,6 +75,7 @@ channel_cnn_output_data = bak + 'CHANNEL_CNN_OUTPUT_DATA/'
 
 # eog = ica_solutions + 'EOG/'
 bads_annotations= data + 'BADS_ANNOTATIONS/'
+uncorrected_bads_annotations= data + 'UNCORRECTED_BADS_ANNOTATIONS/'
 
 nbest = bak + 'NBEST/'
 pdf = bak + 'PDF/'
@@ -84,4 +85,7 @@ n400_words = bak + 'N400/'
 datasets = data + 'DATASETS/'
 pmn_datasets = data + 'PMN_DATASETS/'
 pmn_words = bak + 'PMN/'
+pmn_words_dirty = bak + 'PMN_DIRTY/'
 plot_dicts = pmn_datasets + 'PLOT_DICTS/'
+
+word_epoch_annotation = data + 'WORD_EPOCH_ANNOTATION/'
