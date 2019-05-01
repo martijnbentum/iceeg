@@ -340,23 +340,25 @@ def cap_order(channels = []):
 	
 	
 
-def plot(n_dict,v_dict,gate = 'all',identifier = 'cross_entropy'): 
+def plot(n_dict,v_dict,gate = '190',identifier = 'cross_entropy1'): 
 	'''plots pmn epochs per channel, not yet tested (reconstructed).
 	'''
 	co, cod = cap_order()
 	values = {}
-	nd, vd = ae.load_vn_dicts(gate,identifier)
+	nd, vd = load_vn_dicts(gate,identifier)
 	x = np.arange(-300,1000)
-
+	
 	for k in vd.keys():
-		values[k] = cd[k] / nd[k]
+		values[k] = vd[k] / nd[k]
 
+	pmn_ch = utils.pmn_channel_set()
 	for ch in pmn_ch:
 		rows,cols,index = cod[ch]
 		plt.subplot(rows,cols,index)
 		plt.plot(x,values['low_'+ch]-np.mean(values['low_'+ch][:300]),color='blue')
 		plt.plot(x,values['mid_'+ch]-np.mean(values['mid_'+ch][:300]),color='orange')
 		plt.plot(x,values['high_'+ch]-np.mean(values['high_'+ch][:300]),color='red')
+		plt.ylim(0.4,-0.4)
 		plt.grid()
 		plt.axis('off')
 		plt.legend(('low-'+ch,'mid-'+ch,'high-'+ch),fontsize = 'x-small')
@@ -365,3 +367,38 @@ def plot(n_dict,v_dict,gate = 'all',identifier = 'cross_entropy'):
 		plt.axvline(150,color='tomato',linewidth=1,linestyle='--')
 		plt.axvline(350,color='tomato',linewidth=1,linestyle='--')
 	
+
+def plot_article(gate = '190',identifier = 'cross_entropy1'): 
+	'''plots pmn epochs per channel, not yet tested (reconstructed).
+	'''
+	co, cod = cap_order()
+	values = {}
+	nd, vd = load_vn_dicts(gate,identifier)
+	x = np.arange(-300,1000)
+	
+	for k in vd.keys():
+		values[k] = vd[k] / nd[k]
+
+	channels = 'F7,F8,FC5,FC6,T7,T8'.split(',')
+	rows,cols = 3, 2
+	pmn_ch = utils.pmn_channel_set()
+	for ch in channels:
+		index = channels.index(ch) + 1
+		plt.subplot(rows,cols,index)
+		plt.plot(x,values['low_'+ch]-np.mean(values['low_'+ch][:300]),color='blue')
+		plt.plot(x,values['mid_'+ch]-np.mean(values['mid_'+ch][:300]),color='orange')
+		plt.plot(x,values['high_'+ch]-np.mean(values['high_'+ch][:300]),color='red')
+		plt.ylim(0.35,-0.35)
+		plt.axis('off')
+		plt.grid()
+		plt.annotate(ch,xy= (-350,-0.2))
+		if ch == 'T7':
+			plt.annotate('-300',xy= (-350,0.13))
+			plt.annotate('1000',xy= (900,0.13))
+			plt.annotate('-0.3',xy= (-180,-0.3))
+			plt.annotate(' 0.3',xy= (-180,0.35))
+			plt.legend(('low','mid','high'), bbox_to_anchor=(1,1.3),fontsize='small',loc = 1)
+		plt.axhline(linewidth=1,color='black')
+		plt.axvline(linewidth=1,linestyle='-',color='black')
+		plt.axvline(150,color='tomato',linewidth=1,linestyle='--')
+		plt.axvline(350,color='tomato',linewidth=1,linestyle='--')
