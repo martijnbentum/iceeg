@@ -13,7 +13,7 @@ class bads():
 	'''Object to contain bad epoch and bad channels
 	bad channels will be converted to bad epochs if they are bad les than ch_theshold of the block.
 	'''
-	def __init__(self, name, ch_threshold =.4, minimal_clean_duration = 2000, fo = None, force_make = False):
+	def __init__(self, name, ch_threshold =.4, minimal_clean_duration = 2000, fo = None, force_make = False, corrected = True):
 		'''Create bads object to hold annotation information and save this to xml.
 		name 			name of block
 		ch_threshold 	percentage of block bad for a channel to be completely removed
@@ -22,14 +22,18 @@ class bads():
 		force_make 		whether to overwrite existing bad xml
 		'''
 		if name == '-': return
-		f = path.bads_annotations + 'bads_'+name+'.xml'
+		if corrected:
+			self.f = path.bads_annotations + 'bads_'+name+'.xml'
+		else:
+			self.f = path.uncorrected_bads_annotations+ 'bads_'+name+'.xml'
 		self.epoch_id = 1
 		self.name = name
 		self.fo = fo
 		self.force_make = force_make
+		self.corrected = corrected
 
-		if not force_make and os.path.isfile(f):
-			x = xml_handler.xml_handler(filename = f, artifact_type = 'bads')
+		if not force_make and os.path.isfile(self.f):
+			x = xml_handler.xml_handler(filename = self.f, artifact_type = 'bads')
 			bads = x.xml2bads()
 			self.__dict__.update(bads.__dict__)
 		else:
@@ -72,14 +76,14 @@ class bads():
 	def read_bad_epochs(self):
 		'''read the bad epochs from file, should be the corrected automatic annotations.
 		'''
-		self.f_be = get_xml_filename(self.name,bad_type='bad_epoch')
+		self.f_be = get_xml_filename(self.name,bad_type='bad_epoch',corrected = self.corrected)
 		self.be = xml_handler.xml_handler(filename = self.f_be,artifact_type = 'bad_epoch')
 		self.be.xml2bad_epochs()
 
 	def read_bad_channels(self):
 		'''read the bad channel from file, should be the corrected automatic annotations.
 		'''
-		self.f_bc = get_xml_filename(self.name,bad_type='bad_channel')
+		self.f_bc = get_xml_filename(self.name,bad_type='bad_channel',corrected = self.corrected)
 		self.bc = xml_handler.xml_handler(filename = self.f_bc,artifact_type = 'bad_channel')
 		self.bc.xml2bad_channels()
 
@@ -176,7 +180,7 @@ class bads():
 		'''
 		x = xml_handler.xml_handler(bads=self,artifact_type='bads')
 		x.bads2xml()
-		x.save(path.bads_annotations + 'bads_' + self.name + '.xml')
+		x.save(self.f)
 
 
 def read_notes(exp):
@@ -190,17 +194,21 @@ def read_names(exp):
 	return [line for line in open(path.data+'names-sorted-duration_'+exp).read().split('\n') if line]
 
 
-def get_xml_filenames(name):
+def get_xml_filenames(name, corrected = True):
 	'''Get the filenames of the xml files for the corrected automatic 
 	epoch and channel annotations.'''
-	bad_epochs_filename = get_xml_filename(name,'bad_epoch')
-	bad_channels_filename = get_xml_filename(name,'bad_channel')
+	bad_epochs_filename = get_xml_filename(name,'bad_epoch', corrected)
+	bad_channels_filename = get_xml_filename(name,'bad_channel', corrected)
 	return bad_epochs_filename, bad_channels_filename
 
-def get_xml_filename(name,bad_type = 'bad_epoch'):
+def get_xml_filename(name,bad_type = 'bad_epoch', corrected = True):
 	'''Get filename of the xml file for bad epoch or channel.'''
-	if bad_type == 'bad_epoch': directory = path.corrected_artifact_cnn_xml
-	elif bad_type == 'bad_channel': directory = path.corrected_ch_cnn_xml
+	if corrected:
+		if bad_type == 'bad_epoch': directory = path.corrected_artifact_cnn_xml
+		elif bad_type == 'bad_channel': directory = path.corrected_ch_cnn_xml
+	else:
+		if bad_type == 'bad_epoch': directory = path.artifact_cnn_xml
+		elif bad_type == 'bad_channel': directory = path.artifact_ch_cnn_xml
 	temp = glob.glob(directory + '*' + name + '*.xml')
 	if temp != []: 
 		if len(temp) > 1: print('found multiple files ERROR',temp)
@@ -208,13 +216,13 @@ def get_xml_filename(name,bad_type = 'bad_epoch'):
 		return filename
 	else: print('could not find file',name)
 
-def make_all_bads(exp,fo,force_make = True):
+def make_all_bads(exp,fo,force_make = True, corrected = True):
 	'''Create bads for all blocks of a experiment.'''
 	output = []
 	names = read_names(exp)
 	for i,name in enumerate(names):
 		print(name,i,len(names))
-		b = bads(name =name,fo = fo,force_make = force_make)
+		b = bads(name =name,fo = fo,force_make = force_make, corrected = corrected)
 		print(b)
 		output.append(b)
 	return output
@@ -231,7 +239,10 @@ def load_all_bads(exp,fo,force_make = False):
 	return output
 
 	
-def make_xml_name(name):
+def make_xml_name(name,corrected = True):
 	'''Create filename for the bads annotation xml file.'''
-	f = path.bads_annotations + 'bads_'+name+'.xml'
+	if corrected:
+		f = path.bads_annotations + 'bads_'+name+'.xml'
+	else:
+		f = path.uncorrected_bads_annotations+ 'bads_'+name+'.xml'
 	return f
