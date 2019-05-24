@@ -59,7 +59,8 @@ class Session:
 		self.experiment_name = utils.exptype2explanation_dict[self.exp_type]
 		self.fid2ort = fid2ort
 		self.log = log.log(self.pp_id,self.exp_type)
-		self.session = self.log.session
+		self.session_number = self.log.session
+		self.session= self.log.session
 		self.vmrk = vmrk.vmrk(self.pp_id,self.exp_type)
 		self.n_eeg_recordings = self.vmrk.n_eeg_recordings
 		self.set_start_end_times() # start end times experiment
