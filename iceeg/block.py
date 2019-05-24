@@ -42,6 +42,7 @@ class block:
 		self.vmrk = vmrk
 		self.log = log
 		self.bid = bid
+		self.block_number= bid
 		self.fid2ort = fid2ort
 		self.corrected_artifacts = corrected_artifacts
 		self.set_info()
@@ -50,6 +51,7 @@ class block:
 		self.eeg_loaded = False
 		self.name = self.block2name()
 		self.nblinks = 'NA'
+		self.nallwords = 'NA'
 		self.load_blinks()
 		self.load_artifacts()
 		self.exclude_artifact_words()
@@ -83,6 +85,7 @@ class block:
 		return m
 
 	def __repr__(self):
+		if not hasattr(self,'ncwords'):self.ncwords = 'NA'
 		return 'Block-object:\t' + str(self.bid) + '\tpp ' + str(self.pp_id) + '\t\texp ' + self.exp_type + ' ' +self.experiment_name + '\t\tnwords: ' + str(self.nwords) + '\tncwords: ' + str(self.ncwords)
 
 
@@ -257,6 +260,7 @@ class block:
 		sets the artifact id to the word object 
 		WIP: maybe seperate field for artifact usability on the word object
 		'''
+		self.nallwords = self.nwords
 		if self.artifacts == 'NA' or type(self.st_sample) != int: return 0
 		for w in self.words:
 			for a in self.artifacts:
@@ -264,7 +268,6 @@ class block:
 				if o > 0:
 					w.set_artifact(a)
 					break
-		self.nallwords = self.nwords
 		self.nwords = len([w for w in self.words if w.usable])
 		self.ncwords = len([w for w in self.words if w.usable and hasattr(w,'pos') and w.pos.content_word])
 		self.nexcluded = self.nallwords - self.nwords
@@ -280,7 +283,7 @@ class block:
 		if not hasattr(self,'data'): 
 			if epoch_type in ['epochn400','n400','baseline_n400']: 
 				keep_channels = utils.n400_channel_set()
-			if epoch_type in ['epochpmn','pmn','epoch']:
+			elif epoch_type in ['epochpmn','pmn','epoch']:
 				keep_channels = utils.pmn_channel_set()
 			else: raise ValueError('unk epoch type:',epoch_type)
 			self.data,self.ch,self.rm_ch= utils.raw2np(self.raw,keep_channels= keep_channels)
