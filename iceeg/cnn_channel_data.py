@@ -40,7 +40,7 @@ class cnn_data:
 		# self.current_part_index = 0
 		if load_data_now:
 			self.load_next_training_part()
-			self.load_small_test_set(self.small_test_set_size)
+			self.load_small_test_set()
 
 
 	def __str__(self):
