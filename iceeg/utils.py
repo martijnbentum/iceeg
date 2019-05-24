@@ -509,4 +509,12 @@ def save_pmn_words(b,content_word = False,force_save = False, dirty = False):
 		with open(name +'.ch','w') as fout:
 			fout.write('\n'.join(b.ch))
 
+def load_ipa_dict():
+	'''load dict that transelates cgn phonemes to ipa phonemes.'''
+	return dict([line.split(',')[1:3] for line in open(path.data + 'KALDI-CGN_kaldi_ipa-word.txt').read().split('\n') if line][1:])
+
+def transelate_ipa(phoneme, ipa_dict= None):
+	'''transelate_cgn phoneme to ipa'''
+	if ipa_dict == None: ipa_dict = load_ipa_dict()
+	return ipa_dict[phoneme]
 
