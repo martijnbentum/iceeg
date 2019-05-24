@@ -84,7 +84,7 @@ class log:
 		names=['pp_id','name','handedness','age','session','exp_type', \
 			'filename','marker','ctime','utime','wav_duration','answer_fn', \
 			'block','start_time','end_time']
-		log = pd.read_table(filepath_or_buffer=self.log_fn,sep='\s+',names = names)
+		log = pd.read_csv(filepath_or_buffer=self.log_fn,sep='\s+',names = names)
 		self.session = log.session[0]
 		return log 
 
@@ -105,7 +105,7 @@ class log:
 		names=['pp_id','name','handedness','age','session','exp_type', \
 			'block','answer','ctime','tnumber','smarker','amarker', \
 			'qnumber','log_name','date','time']
-		answer = pd.read_table(filepath_or_buffer = self.answer_fn,sep='\s+', \
+		answer = pd.read_csv(filepath_or_buffer = self.answer_fn,sep='\s+', \
 		names =names)
 		self.session = answer.session[0]
 		return answer
@@ -139,7 +139,7 @@ class log:
 		else:
 			names = 'speaker1,fid,order,filename'.split(',')
 		f = path.data + '/fnlist_'+self.exp_type+'.txt'
-		self.fnlist = pd.read_table(filepath_or_buffer=f,sep = '\t',names =names)
+		self.fnlist = pd.read_csv(filepath_or_buffer=f,sep = '\t',names =names)
 
 
 	def marker2wavname_dict(self):
