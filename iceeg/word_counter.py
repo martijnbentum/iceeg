@@ -30,7 +30,9 @@ def count_words(save = False):
 					continue
 				add_wc(b,word_counter,exp_type)
 				add_wc(b,word_counter,b.name)
-	if save: save_count(word_counter)
+	if save: 
+		save_count_ds(word_counter)
+		save_count_dict(word_counter)
 	return word_counter, bad_blocks
 
 
