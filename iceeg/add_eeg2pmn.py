@@ -166,7 +166,7 @@ def pmn_dataword2eeg(f,w2e = None):
 
 
 
-def make_plot_gate(gate = '110',content_word=False,w2e = None,overwrite = True,test = False,save = True,only_function = False):
+def make_plot_gate(gate = '190',content_word=False,w2e = None,overwrite = True,test = False,save = True,only_function = False):
 	'''Create a dictionary with averages for pmn plotting.'''
 	if w2e == None:w2e = make_word2eeg_dict()
 	fnd = glob.glob(path.pmn_datasets + gate +'/WORDS/*')
