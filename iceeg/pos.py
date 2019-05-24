@@ -1,3 +1,4 @@
+
 class Pos:
 	'''Create a pos object from a Frog output line (corresponding with 1 word).''' 
 
@@ -50,6 +51,7 @@ class Pos:
 		self.morphological_segmentation = pl[3]
 		self.pos = pl[4]
 		self.pos_simple = self.pos.split('(')[0]
+		self.pos_tag = pos2engpos[self.pos_simple]
 		self.content_word = self.pos_simple in ['N','BW','WW','ADJ']
 		self.probability_of_tag = pl[5]
 		self.named_entity = pl[6]
@@ -58,3 +60,17 @@ class Pos:
 		self.dependency_rel_head_word = pl[9]
 
 
+pos2engpos = {
+	'ADJ':'adjective',
+	'BW':'Adverb',
+	'LET':'Punctuation',
+	'LID':'Determiner',
+	'N':'Noun',
+	'SPEC':'Names & unknown',
+	'TSW':'Interjection',
+	'TW':'Numerator',
+	'VG':'Conjuction',
+	'VNW':'Pronoun',
+	'VZ':'Preposition',
+	'WW':'Verb'
+}
