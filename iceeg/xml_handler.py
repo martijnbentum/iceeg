@@ -29,11 +29,12 @@ class xml_handler:
 		self.cdate = time.time()
 		self.date = time.strftime("%b-%d-%Y-%H-%M-%S", time.localtime(self.cdate))
 
-	def bads2xml(self):
+	def make_bads2xml(self):
 		self.bad_epochs = self.bads.bads
 		self.bad_channels = self.bads.bad_channels
-		self.bad_epochs2xml()
-		self.bad_channels2xml()
+		# self.bad_epochs2xml()
+		# self.bad_channels2xml()
+		self.bads2xml()
 		info_xml = etree.SubElement(self.artifacts, 'info', id = 'bads-info')
 		elements = 'name,nbe,nbc,ch_threshold,usability,block_duration,clean_duration,artifact_duration,clean_perc,artifact_perc,artifact_channels,be_annotations,bc_annotations,remove_ch'.split(',')
 		for e in elements:
@@ -50,11 +51,45 @@ class xml_handler:
 				element.text = str(getattr(self.bads,e))
 		element = etree.SubElement(info_xml,'note')
 		element.text = '''
-		bad_epochs are all stretches that are bad, including 
-		bad channel that are not removed. 
-		Bad_channel are all bad_channels that are not removed.
-		Removed channels should be removed, they are bad for 
-		a percentage (or more set in ch_threshold) of the block duration.'''
+		bad-epochs are stretches of eeg materials that contain artifacts or clean materials
+		bad-epochs with artifact annotations refer to sections of eeg materials 
+		that should be removed
+
+		the bad-epochs in this file are based on manually corrected automatically generated
+		bad-epoch and a subset of bad-channel annotations.
+
+		the subset of bad-channels was determined as follows:
+		if the sum of bad-channel artifact durations for a specific channel is shorter
+		than 40% of the block duration they are part of the subset, otherwise the channel
+		is added to the remove channel list
+
+		remove_ch contains a list of channels that should be removed
+		these channels show artifacts for more than 40% of the block duration
+		Channel Fp2 is by default in the remove_ch list
+		'''
+
+
+	def bads2xml(self, multiplier = 1):
+		'''Adds bad epochs from the m object to the xml tree.'''
+		if self.artifact_type == 'bads' and hasattr(self,'artifacts'): pass
+		else: self.artifacts = etree.Element('artifacts')
+		for i,be in enumerate(self.bads.bads):
+			if not be.ok:
+				pass
+			be_xml = etree.SubElement(self.artifacts, 'bad_epoch', id = str(i))
+			# set epoch info elements
+			elements = 'st_sample,et_sample,duration,block_st_sample,block_et_sample,pp_id,exp_type,bid,annotation'.split(',')
+			sample_info = be.get_sample_info(multiplier = multiplier)
+			for e in elements:
+				# print(e)
+				element = etree.SubElement(be_xml, e)
+				if e == 'st_sample' and sample_info: element.text = str(sample_info[0])
+				elif e == 'et_sample' and sample_info: element.text = str(sample_info[1])
+				elif e == 'duration' and sample_info: element.text = str(sample_info[2])
+				elif hasattr(be,e):
+					element.text = str(getattr(be,e))
+				else:
+					element.text = 'NA'
 		
 
 	def bad_channels2xml(self, multiplier = 1):
