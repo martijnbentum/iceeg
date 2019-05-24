@@ -1,6 +1,7 @@
 import glob
 import os
 import pandas as pd
+import path
 
 class alog:
 	'''Aggregate information about start/end times in the experiment.
@@ -11,27 +12,19 @@ class alog:
 		(should be extended with answer accuracy and temperature and humidety)
 	'''
 	
-	def __init__(self, directory = '', filename = '', save_new_dir = True):
+	def __init__(self, save_new_dir = True):
 		'''Aggregate information about start/end times of events in the experiment.
 		
 		Keywords:
 		pp_id = participant id (1-48) int
 		exp_type = experimental type (k/o/ifadv) reflects register of speech in audio file str
 		'''
-		if directory[-1] != '/': directory += '/'
-		self.directory = directory
-		self.filename = filename
+		self.directory = path.data + 'log/'
 		self.save_new_dir = save_new_dir
-		self.fn = []
-		if self.directory:
-			if os.path.isdir(self.directory):
-				self.fn = glob.glob(self.directory + 'pp*.txt')
-			else: print(self.directory,'does not exist')
-		
+		self.fn = glob.glob(self.directory + 'pp*.txt')
 		if self.fn: self.anonymize_directory()
-		elif self.filename: self.anonymize(f)
 		else: print('Please specify a name or directory to anonimize data')
-		self.read_log()
+		# self.read_log()
 		
 
 	def __str__(self):
