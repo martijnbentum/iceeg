@@ -64,6 +64,9 @@ class bads():
 		m += 'artifact dur\t'+ str(self.artifact_duration) + '\n'
 		m += 'clean perc\t'+ str(round(self.clean_perc,3)) + '\n'
 		m += 'artifact perc\t'+ str(round(self.artifact_perc,3)) + '\n'
+		if hasattr(self,'ignorably_short'):
+			m += 'n rejected annots\t' + str(len(self.incorrect_auto_annotations)) + '\n'
+			m += 'n ignored short annots\t' + str(len(self.ignorably_short))+ '\n'
 		return m
 
 	def __repr__(self):
@@ -141,9 +144,17 @@ class bads():
 		artifact_channels = [ch for ch in self.bc.bad_channels if ch.channel not in self.remove_ch]
 		self.bad_channels = artifact_channels[:]
 		self.temp = artifact_channels + self.be.bad_epochs
+		self.incorrect_auto_annotations = []
+		self.ignorably_short = []
 		for b in self.temp:
 			if b.annotation == 'clean': continue
-			if b.annotation != 'artifact':print(b,'annotation: '+b.annotation,'could be unwanted, clean is ignored')
+			if b.correct == 'incorrect' and self.corrected:
+				self.incorrect_auto_annotations.append(b)
+				continue
+			if b.duration <= 30:
+				self.ignorably_short.append(b)
+				continue
+			if b.annotation != 'artifact':print(b,'annotation: '+b.annotation,'dur:',b.duration,'this annotation could be unwanted, (clean annotations are ignored)')
 			start = bad_epoch.Boundary(b.st_sample,boundary_type = 'start',visible = False)
 			end= bad_epoch.Boundary(b.et_sample,boundary_type = 'end',visible = False)
 			be = bad_epoch.Bad_epoch(start,end,'artifact',b.coder,'blue',b.pp_id,b.exp_type,b.block_st_sample,b.bid,self.epoch_id,False,'correct',-9,'',b.block_st_sample + self.block_duration)
@@ -178,9 +189,9 @@ class bads():
 	def save(self):
 		'''Write the object to xml.
 		'''
-		x = xml_handler.xml_handler(bads=self,artifact_type='bads')
-		x.bads2xml()
-		x.save(self.f)
+		self.x = xml_handler.xml_handler(bads=self,artifact_type='bads')
+		self.x.make_bads2xml()
+		self.x.save(self.f)
 
 
 def read_notes(exp):
