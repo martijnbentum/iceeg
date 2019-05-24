@@ -89,3 +89,5 @@ pmn_words_dirty = bak + 'PMN_DIRTY/'
 plot_dicts = pmn_datasets + 'PLOT_DICTS/'
 
 word_epoch_annotation = data + 'WORD_EPOCH_ANNOTATION/'
+
+xml_info = bak + 'XML_INFO/'
