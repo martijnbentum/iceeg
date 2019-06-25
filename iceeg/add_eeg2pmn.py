@@ -47,7 +47,6 @@ def make_word2eeg_dict():
 
 def extract_trial_info(f):
 	'''extract info of the word corresponding the eeg numpy matrix.'''
-	# word.fid + '_' + word.sid + '_' + str(word.chunk_number) + '_' + str(word.word_number) + '_' + str(word.pos.sentence_number) + '_' + word.pos.token_number +'_' + word.word_utf8_nocode_nodia()
 	fid = f.split('/')[-1].split('_')[1]
 	sid = f.split('/')[-1].split('_')[2]
 	w = f.split('/')[-1].split('_')[-3]
@@ -80,9 +79,12 @@ def average(channel, average_type = 'baseline'):
 	elif average_type == 'pmn':return np.mean(channel[450:650])
 
 def load_header():
+	'''load the header of the pmn_dataset'''
 	return open(path.pmn_datasets + 'header').read().rstrip('\n').split('\t')
 
 def make_dataset_gate(gate = '110',w2e = None,overwrite = False,test = False):
+	'''make an eeg dataset for a specific gate with averaged EEG values for the PMN window and baseline.
+	'''
 	if w2e == None:w2e = make_word2eeg_dict()
 	filename = path.pmn_datasets + 'pmn_dataset_'+gate+'_eeg.dataset'
 	if not overwrite and os.path.isfile(filename):
@@ -110,10 +112,11 @@ def save(output,filename):
 		
 def check_match(fnp,pmnd):
 	'''Check whether the pmn_dataset word (contains entropy)  matches 
-	with eeg pmn word (conains eeg data).
+	with eeg pmn word (contains eeg data).
 
 	fnp 	 the numpy eeg data matrix filename
 	pmnd 	 the pmn_dataset word filename
+	function is callend from pmn_dataword2eeg
 	'''
 	fid, sid,w,exp,cw,cid,wn,sn,tn= extract_trial_info(fnp)
 	header = load_header()
@@ -134,6 +137,7 @@ def check_match(fnp,pmnd):
 def pmn_dataword2eeg(f,w2e = None):	
 	'''matches eeg data to the pmn dataword and extracts eeg averages for baseline and pmn.
 	f 		filename of the pmn_dataword
+	function is called from make_dataset_gate
 	'''
 	if w2e == None:w2e = make_word2eeg_dict()
 	pmn_ch = utils.pmn_channel_set()
@@ -143,7 +147,6 @@ def pmn_dataword2eeg(f,w2e = None):
 	ch_name2d= {}
 	output = []
 	header = load_header()
-	# header = 'pp,fid,sid,word,exp,content_word,cid,wn,sn,tn'.split('\t') + header
 	header = ['pp'] + header
 	for ch in pmn_ch:
 		header.extend([ch +'_baseline',ch + '_pmn'])
@@ -167,7 +170,13 @@ def pmn_dataword2eeg(f,w2e = None):
 
 
 def make_plot_gate(gate = '190',content_word=False,w2e = None,overwrite = True,test = False,save = True,only_function = False):
-	'''Create a dictionary with averages for pmn plotting.'''
+	'''Create a dictionary with averages for pmn plotting.
+	the eeg data is loaded from path.pmn_words folder
+	the cross entropy values are read directly from the pmn_datasets/190/words files
+	the dictionary contain summed values for each channel and counts for how many values were summed
+	the EEG values are further split between low mid and high cross entropy
+	the split in terciles is based on the pmn dataset, should maybe be settable?, now based on 190
+	'''
 	if w2e == None:w2e = make_word2eeg_dict()
 	fnd = glob.glob(path.pmn_datasets + gate +'/WORDS/*')
 	if test: fnd = fnd[:100]
@@ -186,7 +195,9 @@ def make_plot_gate(gate = '190',content_word=False,w2e = None,overwrite = True,t
 	return n_dict,v_dict,failed
 
 def pmn_dataword2ploteeg(f,content_word,w2e = None,n_dict = {},v_dict = {},failed = [],only_function= False):
-	'''extract eeg data for a specific pmn_dataword'''
+	'''extract eeg data for a specific pmn_dataword.
+	function is called from make_plot_gate
+	'''
 	if w2e == None:w2e = make_word2eeg_dict()
 	pmn_ch = utils.pmn_channel_set()
 	pmnd = open(f).read().rstrip('\n').split('\t')
