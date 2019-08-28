@@ -268,6 +268,7 @@ def remove_channels(raw,keep_channels, remove_bads = True):
 	if remove_bads: remove_ch.extend(raw.info['bads'])
 	print('remove',remove_ch,'\nkeep',keep_channels)
 	ch_mask = [n not in remove_ch for n in ch_names]
+	print(ch_mask)
 	ch_names= [n for n in ch_names if not n in remove_ch]
 	print('channels:',' '.join(ch_names))
 	print('removed channels:', ' '.join(remove_ch))
