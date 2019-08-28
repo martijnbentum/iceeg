@@ -39,24 +39,28 @@ class word2ppl:
 		'''
 		exp = self.exp
 		if exp == 'o': 
-			self.lm = 'books_30'
-			self.lm_other1 = 'autocues_30_other-o'
-			self.lm_other2 = 'compa_20_other-o'
+			self.lm = 'books_o_70'#'books_30'
+			self.lm_other1 = 'news_o_70'#'autocues_30_other-o'
+			self.lm_other2 = 'dialogues_o_87'#'compa_20_other-o'
+			self.lm_cache = 'cache-general_o_64_5.out'
 		if exp == 'k': 
-			self.lm = 'autocues_30'
-			self.lm_other1 = 'books_30_other-k'
-			self.lm_other2 = 'compa_20_other-k'
+			self.lm = 'news_k_70'#'autocues_30'
+			self.lm_other1 = 'books_k_70'#'books_30_other-k'
+			self.lm_other2 = 'dialogues_k_87'#'compa_20_other-k'
+			self.lm_cache = 'cache-general_k_64_5.out'
 		if exp == 'ifadv': 
-			self.lm = 'compa_20'
-			self.lm_other1 = 'autocues_30_other-ifadv'
-			self.lm_other2 = 'books_30_other-ifadv'
+			self.lm = 'dialogues_ifadv_87'#'compa_20'
+			self.lm_other1 = 'news_ifadv_70'#'autocues_30_other-ifadv'
+			self.lm_other2 = 'books_ifadv_70'#'books_30_other-ifadv'
+			self.lm_cache = 'cache-general_ifadv_64_5.out'
 		self.infos = [line.split('\t') for line in open(path.data +'sentence_info_' + exp,encoding = 'utf-8').read().split('\n')]
 		self.strings = open(path.data+'sentence_strings_' + exp,encoding = 'utf8').read().split('\n')
 		# should make ppl filename more genral
 		self.ppls = open(path.data+'out_' + exp + '_10.ppl',encoding = 'utf-8').read().split('\n\n')
-		self.ppls_register = open(path.data + 'cow_'+self.lm + '.out', encoding = 'utf-8').read().split('\n\n')
-		self.ppls_other1= open(path.data + self.lm_other1, encoding = 'utf-8').read().split('\n\n')
-		self.ppls_other2= open(path.data + self.lm_other2, encoding = 'utf-8').read().split('\n\n')
+		self.ppls_register = open(path.data + 'specific_'+self.lm + '.out', encoding = 'utf-8').read().split('\n\n')
+		self.ppls_other1= open(path.data + 'specific_'+self.lm_other1 + '.out', encoding = 'utf-8').read().split('\n\n')
+		self.ppls_other2= open(path.data + 'specific_'+self.lm_other2 + '.out', encoding = 'utf-8').read().split('\n\n')
+		self.ppls_cache= open(path.data + self.lm_cache, encoding = 'utf-8').read().split('\n\n')
 
 	def set_ppl_sentences(self):
 		'''Create ppl_sentence objects.'''
@@ -69,8 +73,10 @@ class word2ppl:
 			info_line_register = self.ppls_register[i]
 			info_line_other1= self.ppls_other1[i]
 			info_line_other2= self.ppls_other2[i]
+			info_line_cache= self.ppls_cache[i]
 			s = self.strings[i]
-			self.sentences.append(ppl_sentence(ppl_line,info_line,s,self.exp,info_line_register,info_line_other1,info_line_other2))
+			self.sentences.append(ppl_sentence(ppl_line,info_line,s,self.exp,info_line_register,
+			info_line_other1,info_line_other2,info_line_cache))
 			self.words.extend(self.sentences[-1].words)
 
 	def _extract_info(self):
@@ -173,7 +179,8 @@ class word2ppl:
 
 class ppl_sentence:
 	'''Holds information about each sentence, based on the SRILM ngram call output.'''
-	def __init__(self,ppl_line,info_line,s,exp,info_line_register = '',info_line_other1 = '',info_line_other2 = ''):
+	def __init__(self,ppl_line,info_line,s,exp,info_line_register = '',
+				info_line_other1 = '',info_line_other2 = '',info_line_cache=''):
 		'''PPL information for each sentence, hold ppl_word objects.
 		ppl_line 	a string with all info related to 1 sentence (SRILM ngram output)
 		info_line 	list with sentence info (checks ppl info)
@@ -192,6 +199,8 @@ class ppl_sentence:
 		self.ppl_other1_list = info_line_other1.split('\n')
 		self.info_line_other2= info_line_other2
 		self.ppl_other2_list = info_line_other2.split('\n')
+		self.info_line_cache= info_line_cache
+		self.ppl_cache_list = info_line_cache.split('\n')
 		self.sentence_number = self.info[1]
 		self.sid = self.info[2]
 		self.bid = self.info[3]
@@ -221,14 +230,16 @@ class ppl_sentence:
 		ppl_register_list = self.ppl_register_list[1:-2]
 		ppl_other1_list = self.ppl_other1_list[1:-2]
 		ppl_other2_list = self.ppl_other2_list[1:-2]
+		ppl_cache_list = self.ppl_cache_list[1:-2]
 		for i,word_line in enumerate(self.ppl_list[1:-2]):
 			# print(word_line)
 			word = word_line.split('( ')[-1].split(' | ')[0]
 			word_line_register = ppl_register_list[i]
 			word_line_other1= ppl_other1_list[i]
 			word_line_other2= ppl_other2_list[i]
+			word_line_cache= ppl_cache_list[i]
 			if word == '</s>': continue
-			self.words.append(ppl_word(i,word_line,self,word_line_register,word_line_other1,word_line_other2))
+			self.words.append(ppl_word(i,word_line,self,word_line_register,word_line_other1,word_line_other2,word_line_cache))
 
 	def _extract_sentence_ppl(self):
 		'''Retreive some sentence ppl stats.'''
@@ -243,6 +254,9 @@ class ppl_sentence:
 
 		self.logprob_other2= self.info_line_other2.split(' logprob= ')[-1].split(' ')[0]
 		self.ppl_score_other2, self.ppl1_score_other2= self.info_line_other2.split('ppl= ')[-1].split(' ppl1= ')
+
+		self.logprob_cache= self.info_line_cache.split(' logprob= ')[-1].split(' ')[0]
+		self.ppl_score_cache, self.ppl1_score_cache= self.info_line_cache.split('ppl= ')[-1].split(' ppl1= ')
 
 		try: self.ppl_score = float(self.ppl_score)
 		except: pass
@@ -272,6 +286,13 @@ class ppl_sentence:
 		try: self.logprob_other2 = float(self.logprob_other2)
 		except: pass
 
+		try: self.ppl_score_cache= float(self.ppl_score_cache)
+		except: pass
+		try: self.ppl1_score_cache= float(self.ppl1_score_cache)
+		except: pass
+		try: self.logprob_cache= float(self.logprob_cache)
+		except: pass
+
 	def _extract_noovs(self):
 		'''Count out of vocabulary words.'''
 		self.oov = self.ppl_line.split(' words, ')[-1].split(' ')[0]
@@ -285,6 +306,9 @@ class ppl_sentence:
 
 		self.oov_other2= self.info_line_other2.split(' words, ')[-1].split(' ')[0]
 		self.nwords_other2 = self.info_line_other2.split(' sentences, ')[-1].split(' ')[0]
+
+		self.oov_cache= self.info_line_cache.split(' words, ')[-1].split(' ')[0]
+		self.nwords_cache= self.info_line_cache.split(' sentences, ')[-1].split(' ')[0]
 
 		try: self.oov = int(self.oov)
 		except: pass
@@ -301,15 +325,20 @@ class ppl_sentence:
 		try: self.nwords_other1= int(self.nwords_other1)
 		except: pass
 
-		try: self.oov_other1= int(self.oov_other2)
+		try: self.oov_other2= int(self.oov_other2)
 		except: pass
-		try: self.nwords_other1= int(self.nwords_other2)
+		try: self.nwords_other2= int(self.nwords_other2)
+		except: pass
+
+		try: self.oov_cache= int(self.oov_cache)
+		except: pass
+		try: self.nwords_cache= int(self.nwords_cache)
 		except: pass
 
 
 class ppl_word:
 	'''PPL info for a word based on SRILM ngram call output.'''
-	def __init__(self,i,word_line,sentence,word_line_register,word_line_other1,word_line_other2):
+	def __init__(self,i,word_line,sentence,word_line_register,word_line_other1,word_line_other2,word_line_cache):
 		'''PPL info for a word based on SRILM ngram call output.
 		i 		index, word number in sentence
 		word... the line corresponding to the word in the SRILM output
@@ -324,6 +353,7 @@ class ppl_word:
 		self.word_line_register = word_line_register
 		self.word_line_other1= word_line_other1
 		self.word_line_other2= word_line_other2
+		self.word_line_cache= word_line_cache
 		self.ppl_sentence = sentence
 		self.sentence = self.ppl_sentence.sentence
 		self.word = self.sentence.split(' ')[i]
@@ -345,6 +375,7 @@ class ppl_word:
 		m += 'logprob_register:\t\t' + str(self.logprob_register)+ '\n'
 		m += 'logprob_other1:\t\t' + str(self.logprob_other1)+ '\n'
 		m += 'logprob_other2:\t\t' + str(self.logprob_other2)+ '\n'
+		m += 'logprob_cache:\t\t' + str(self.logprob_cache)+ '\n'
 		m += 'p:\t\t' + str(self.p)+ '\n'
 		m += 'ngram:\t\t' + str(self.ngram)+ '\n'
 		m += 'experiment:\t'+self.exp+ '\n'
@@ -360,6 +391,9 @@ class ppl_word:
 		else:
 			self.ngram = 0
 			self.oov = True
+		if 'cache' in self.word_line_cache:
+			self.cache = float(self.word_line_cache.split('cache=')[-1].split(']')[0])
+		else: self.cache = -1
 		self.p = self.word_line.split('] ')[-1].split(' ')[0]
 		self.logprob = self.word_line.split(' [ ')[-1].split(' ]')[0]
 		self.ngram = int(self.ngram)
@@ -373,6 +407,9 @@ class ppl_word:
 		self.p_other2= self.word_line_other2.split('] ')[-1].split(' ')[0]
 		self.logprob_other2= self.word_line_other2.split(' [ ')[-1].split(' ]')[0]
 
+		self.p_cache= self.word_line_cache.split('] ')[-1].split(' ')[0]
+		self.logprob_cache= self.word_line_cache.split(' [ ')[-1].split(' ]')[0]
+
 		self.p= float(self.p)
 		self.logprob= float(self.logprob)
 		
@@ -384,3 +421,6 @@ class ppl_word:
 
 		self.p_other2= float(self.p_other2)
 		self.logprob_other2= float(self.logprob_other2)
+
+		self.p_cache= float(self.p_cache)
+		self.logprob_cache= float(self.logprob_cache)
