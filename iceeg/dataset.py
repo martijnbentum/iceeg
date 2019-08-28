@@ -274,16 +274,19 @@ class dataword():
 			self.logprob = 'na'
 			self.logprob_register = 'na'
 			self.logprob_other = 'na'
+			self.logprob_cache= 'na'
 			self.ok = False
 			print(self.w,'no logprob')
 		elif '-inf' in self.w.ppl.word_line: 
 			self.logprob = '-10'
 			self.logprob_register = '-10'
 			self.logprob_other= '-10'
+			self.logprob_cache= '-10'
 		else: 
 			self.logprob = str(self.w.ppl.logprob)
 			self.logprob_register = str(self.w.ppl.logprob_register)
 			self.logprob_other = str(self.w.ppl.logprob_other1)
+			self.logprob_cache= str(self.w.ppl.logprob_cache)
 		
 
 	def _extract_frequency(self):
@@ -350,7 +353,7 @@ class dataword():
 		'''Set the header of the values that need to be extracted from the dataword.'''
 		if word == 'target':
 			h = 'word,baseline,n400,freq,freq_log,pp_id,exp,bid,word_duration'
-			h += ',logprob,logprob_register,logprob_other'
+			h += ',logprob,logprob_register,logprob_other,logprob_cache'
 			h += ',nch,nch_rm,rejected_channels,selected_channels,content_word'
 			h += ',usable,threshold_ok,word_in_block,word_in_sentence,sentence_in_block'
 			h += ',fid,sid,register,word_onset,sample_offset,name,nprevious_words'
