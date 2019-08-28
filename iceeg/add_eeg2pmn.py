@@ -205,8 +205,8 @@ def pmn_dataword2ploteeg(f,content_word,w2e = None,n_dict = {},v_dict = {},faile
 	if only_function and content_word and pmnd[header.index('content_word')] == 'True': return n_dict,v_dict,failed
 	elif content_word and pmnd[header.index('content_word')] == 'False': return n_dict,v_dict,failed
 	value = float(pmnd[header.index('cross_entropy')])
-	if value < 1: value_type = 'low'
-	elif 2.8 > value > 1: value_type = 'mid'
+	if value < 0.4: value_type = 'low'
+	elif 2.7 > value > 0.4: value_type = 'mid'
 	else: value_type = 'high'
 
 	word_number = f2word_number(f)
