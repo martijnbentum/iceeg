@@ -12,7 +12,7 @@ class dataset():
 	only defined type for now is n400, define others to extract the relevant eeg data.
 	Exclude bad data
 	'''
-	def __init__(self, dataset_type = 'n400',participant = 'all', filename = ''):
+	def __init__(self, dataset_type = 'n400',participant = 'all', filename = '',nprevious = 0):
 		'''Create object to hold data, it works based to make it per participant and save each and combine afterwards.
 
 		dataset_type 		type that defines the eeg data that is extracted
@@ -21,6 +21,7 @@ class dataset():
 		self.dataset_type = dataset_type
 		self.filename = path.datasets + filename + '_' + self.dataset_type + '.dataset' 
 		self.participant = participant
+		self.nprevious = nprevious
 		self.pp, self.blocks, self.bad_blocks = [], [], []
 		self.datawords, self.excluded_words = [], []
 		self.nwords, self.nexcluded_words = 0, 0
@@ -57,7 +58,7 @@ class dataset():
 				if not hasattr(b,'xml') or not b.xml.usability in ['great','ok','mediocre']: 
 					self.excluded_blocks.append(b)
 					continue
-				db = datablock(b,chs,dst)
+				db = datablock(b,chs,dst,nprevious = self.nprevious)
 				self.datawords.extend(db.datawords)
 				self.excluded_words.extend(db.excluded_words)
 
@@ -109,7 +110,7 @@ class datablock():
 	each session is an experiment and each block is an audiofile, each block contains word objects
 	which contain information for eeg registration and other word information (frequency surprisal usability)
 	'''
-	def __init__(self, b, chs, dst):
+	def __init__(self, b, chs, dst, nprevious = 0):
 		if not hasattr(b,'xml'): 
 			print('block does not have usability information, not append to dataset',b.name)
 			return 
@@ -118,6 +119,7 @@ class datablock():
 		self.data = self.b.raw[:][0] * 10 **6
 		self.channel_set = chs
 		self.dataset_type = dst
+		self.nprevious = nprevious
 		self.extract_info()
 		self.b.unload_eeg_data()
 		delattr(self,'data')
@@ -170,7 +172,7 @@ class datablock():
 			if not w.usable or not hasattr(w,'pos') or not w.pos.content_word:
 				self.excluded_words.append(self.b.name + '_wi-'+str(i))
 				continue
-			dw  = dataword(w,self,i)
+			dw  = dataword(w,self,i,nprevious = self.nprevious)
 			if dw.ok:
 				self.datawords.append(dw)
 			else:self.excluded_words.append(self.b.name + '_wi-'+str(i))
@@ -181,7 +183,7 @@ class dataword():
 	'''Create a line in the dataset based on a word in the experiment. (see word.py)
 	the word object contains info about the eeg registration and other info (frequency surprisal usability).
 	'''
-	def __init__(self,w,db,index,keep_traces = False, prev = False, b = None):
+	def __init__(self,w,db,index,keep_traces = False, prev = False, b = None, nprevious = 0):
 		'''Dataword object that holds info for a line in the dataset
 		w 		word object (word.py)
 		db 		datablock (contains block (block.py))
@@ -195,6 +197,7 @@ class dataword():
 		self.db = db 
 		if b == None: self.b = self.db.b
 		else: self.b = b
+		self.nprevious = nprevious
 		self.index = index
 		self.keep_traces = keep_traces
 		self.word = self.w.word_utf8_nocode_nodia().lower()
@@ -260,7 +263,7 @@ class dataword():
 
 	def _extract_logprob(self):
 		'''Extract the logprob computed by SRILM for cow (general web corpus or register specific corpus).
-		cow corpus is a large collection of web text (~9 billion words)
+		cow corpus is a large collection of web text (~5 billion words)
 		register specific corpus, text similar to the speech style of the experiment (experimental text not part of corpus)
 		SML trained on cow
 		SML trained on register specific corpus and subsequently a version is made that is an interpolation
@@ -270,14 +273,17 @@ class dataword():
 		if not hasattr(self.w,'ppl'): 
 			self.logprob = 'na'
 			self.logprob_register = 'na'
+			self.logprob_other = 'na'
 			self.ok = False
 			print(self.w,'no logprob')
 		elif '-inf' in self.w.ppl.word_line: 
 			self.logprob = '-10'
 			self.logprob_register = '-10'
+			self.logprob_other= '-10'
 		else: 
 			self.logprob = str(self.w.ppl.logprob)
 			self.logprob_register = str(self.w.ppl.logprob_register)
+			self.logprob_other = str(self.w.ppl.logprob_other1)
 		
 
 	def _extract_frequency(self):
@@ -315,14 +321,15 @@ class dataword():
 		else: self.sentence_in_block, self.content_word = 'na','na'
 		self.usable = str(self.w.usable)
 		self.name = self.b.name
-		self._set_previous_words()
+		if self.nprevious > 0: self._set_previous_words()
+		else: self.nprevious_words = '0'
 		self._extract_frequency()
 
 		
 	def _set_previous_words(self):
 		'''Set information of the preceding words, can be usefull for analysis.'''
 		if not self.ok or self.prev: return
-		start_index = self.index -3
+		start_index = self.index - self.nprevious
 		if start_index < 0: start_index = 0
 		self.previous_words = self.db.b.words[start_index:self.index]
 		self.nprevious_words = str(len(self.previous_words))
@@ -343,7 +350,7 @@ class dataword():
 		'''Set the header of the values that need to be extracted from the dataword.'''
 		if word == 'target':
 			h = 'word,baseline,n400,freq,freq_log,pp_id,exp,bid,word_duration'
-			h += ',logprob,logprob_register'
+			h += ',logprob,logprob_register,logprob_other'
 			h += ',nch,nch_rm,rejected_channels,selected_channels,content_word'
 			h += ',usable,threshold_ok,word_in_block,word_in_sentence,sentence_in_block'
 			h += ',fid,sid,register,word_onset,sample_offset,name,nprevious_words'
@@ -358,14 +365,15 @@ class dataword():
 		if self.prev: return False
 		header = self.header()
 		values = self.values()
+		if self.nprevious == 0: return header, values
 		prev_h, prev_v = [], []
 		n = len(self.previous_dw)
 		for i,w in enumerate(self.previous_dw):
 			prev_h.append(['prev' + str(n-i) + cn for cn in w.header('prev')])
 			prev_v.append(w.values('prev'))
 		temp_h, temp_v = [], []
-		for i in range(3-n):
-			temp_h.append(['prev' + str(3-i) + cn for cn in  self.header('prev')])
+		for i in range(self.nprevious-n):
+			temp_h.append(['prev' + str(self.nprevious-i) + cn for cn in  self.header('prev')])
 			temp_v.append(['na'] * len(temp_h[-1]))
 		if len(temp_h) > 0:
 			prev_h = temp_h + prev_h
