@@ -45,7 +45,7 @@ def save(xml,name):
 def participant2xml(p,goal = None):
 	p = check_p(p)
 	if goal == None: o = etree.Element('participant',id = str(p.pp_id))
-	else: o = etree.SubElement(goal,'participant')
+	else: o = etree.SubElement(goal,'participant') # NO ID HERE??
 	pp_id = p.pp_id
 	nallwords = sum([b.nallwords for b in p.blocks if not b.block_missing and type(b.nallwords) == int])
 	ncontent_words= sum([b.ncontent_words for b in p.blocks if not b.block_missing])
